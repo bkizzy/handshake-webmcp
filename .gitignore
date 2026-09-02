@@ -1,0 +1,23 @@
+# dependencies
+/node_modules
+/.pnpm-store
+
+# next
+/.next
+/out
+
+# test
+/coverage
+
+# local data and environment
+/.data
+.env*
+!.env.example
+
+# deployment
+/.vercel
+
+# system
+.DS_Store
+*.log
+tsconfig.tsbuildinfo
