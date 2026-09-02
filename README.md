@@ -64,7 +64,7 @@ Copy `.env.example` to `.env.local` and configure:
 
 Apply [`supabase/migrations/0001_agreements.sql`](supabase/migrations/0001_agreements.sql) in the Supabase SQL editor. The agreements table has row-level security enabled and no browser policies; only the server secret can access it.
 
-For numeric email login, edit the Supabase **Magic Link** email template to display `{{ .Token }}` as the six-digit code. The UI submits that code with Supabase's email OTP verification flow.
+For numeric email login, Handshake asks Supabase to generate a one-time code on the server and delivers it through Resend. The UI submits that code with Supabase's email OTP verification flow, so no Supabase SMTP or email-template customization is required.
 
 Required production variables:
 

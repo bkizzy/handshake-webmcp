@@ -19,12 +19,14 @@ export function LoginForm({ returnTo = "/dashboard" }: { returnTo?: string }) {
     if (!client) return;
     setWorking(true);
     setError("");
-    const { error: authError } = await client.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true },
+    const response = await fetch("/api/auth/request-code", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email }),
     });
+    const result = await response.json().catch(() => null) as { error?: string } | null;
     setWorking(false);
-    if (authError) return setError(authError.message);
+    if (!response.ok) return setError(result?.error ?? "We could not send the sign-in code. Try again.");
     setStep("code");
   }
 
