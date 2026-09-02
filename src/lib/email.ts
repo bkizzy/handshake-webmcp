@@ -56,7 +56,7 @@ export async function sendLoginCode(email: string, code: string) {
       body: JSON.stringify({
         from,
         to: [email],
-        subject: `${code} is your Handshake sign-in code`,
+        subject: "Your Handshake sign-in code",
         html: `
           <div style="margin:0;padding:40px 20px;background:#f5f7fa;font-family:Arial,sans-serif;color:#172033">
             <div style="max-width:520px;margin:0 auto;padding:36px;background:white;border:1px solid #dfe4ec;border-radius:12px;text-align:center">
