@@ -49,7 +49,7 @@ export function LoginForm({ returnTo = "/dashboard" }: { returnTo?: string }) {
         <span className="login-icon"><KeyRound size={22} /></span>
         <p className="eyebrow">Local development</p>
         <h1>Authentication is ready to connect.</h1>
-        <p className="intro">Add the Supabase environment variables to enable six-digit email sign-in. Local authoring remains open while you build.</p>
+        <p className="intro">Add the Supabase environment variables to enable email code sign-in. Local authoring remains open while you build.</p>
         <Link className="button-primary dev-button" href="/new">Continue without a profile <ArrowRight size={16} /></Link>
         <style jsx>{styles}</style>
       </section>
@@ -61,7 +61,7 @@ export function LoginForm({ returnTo = "/dashboard" }: { returnTo?: string }) {
       <span className="login-icon">{step === "email" ? <Mail size={22} /> : <KeyRound size={22} />}</span>
       <p className="eyebrow">Author sign in</p>
       <h1>{step === "email" ? "Continue with email" : "Check your inbox"}</h1>
-      <p className="intro">{step === "email" ? "We’ll send a one-time six-digit code. No password to remember." : <>Enter the code sent to <b>{email}</b>.</>}</p>
+      <p className="intro">{step === "email" ? "We’ll send a one-time numeric code. No password to remember." : <>Enter the code sent to <b>{email}</b>.</>}</p>
       {step === "email" ? (
         <form onSubmit={sendCode}>
           <label className="field-label">Work email<input className="field-input" type="email" autoComplete="email" placeholder="you@company.com" value={email} onChange={(event) => setEmail(event.target.value)} required autoFocus /></label>
@@ -69,8 +69,8 @@ export function LoginForm({ returnTo = "/dashboard" }: { returnTo?: string }) {
         </form>
       ) : (
         <form onSubmit={verifyCode}>
-          <label className="field-label">Six-digit code<input className="field-input code-input" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} placeholder="000000" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} required autoFocus /></label>
-          <button className="button-primary" disabled={working || code.length !== 6}>{working ? <LoaderCircle className="spin" size={16} /> : <Check size={16} />} Verify and continue</button>
+          <label className="field-label">One-time code<input className="field-input code-input" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}|[0-9]{8}" maxLength={8} placeholder="00000000" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} required autoFocus /></label>
+          <button className="button-primary" disabled={working || (code.length !== 6 && code.length !== 8)}>{working ? <LoaderCircle className="spin" size={16} /> : <Check size={16} />} Verify and continue</button>
           <button type="button" className="change-email" onClick={() => { setStep("email"); setCode(""); setError(""); }}>Use a different email</button>
         </form>
       )}
