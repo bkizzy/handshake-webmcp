@@ -23,7 +23,7 @@ export function SiteHeader() {
       <div className="app-shell header-inner">
         <Brand />
         <nav aria-label="Primary navigation">
-          {email ? <Link href="/dashboard">My agreements</Link> : <Link href="/#how-it-works">How it works</Link>}
+          {!email && <Link href="/#how-it-works">How it works</Link>}
           {!email && <Link href="/login">Sign in</Link>}
           <Link href="/new" className="button-primary">Start an agreement</Link>
           {email && <details className="user-menu"><summary aria-label="Open user menu"><span>{email.slice(0, 1).toUpperCase()}</span><div><b>Account</b><small>{email}</small></div></summary><div className="menu-popover"><Link href="/dashboard"><FileText size={15} /> My agreements</Link><Link href="/billing"><CreditCard size={15} /> Billing</Link><form action="/api/auth/logout" method="post"><button><LogOut size={15} /> Log out</button></form></div></details>}

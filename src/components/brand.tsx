@@ -6,10 +6,10 @@ import Link from "next/link";
 export function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/" className="brand" aria-label="Handshake AI home">
-      <Image className="brand-mark" src="/handshake-mark.png" width={36} height={36} alt="" priority />
+      <Image className="brand-mark" src="/handshake-mark.png" width={48} height={48} alt="" priority />
       {!compact && <span>Handshake AI</span>}
       <style jsx>{`
-        :global(.brand-mark) { width: 36px; height: 36px; object-fit: contain; }
+        :global(.brand-mark) { width: 48px; height: 48px; object-fit: contain; }
       `}</style>
     </Link>
   );
