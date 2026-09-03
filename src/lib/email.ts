@@ -41,12 +41,13 @@ async function sendEmail(to: string, content: AgreementEmailContent, url?: strin
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   if (!apiKey || !from) return false;
+  const senderAddress = from.match(/<([^>]+)>/)?.[1] ?? from;
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
       body: JSON.stringify({
-        from,
+        from: `Mutual Assent AI <${senderAddress.trim()}>`,
         to: [to],
         subject: content.subject,
         html: renderEmail(content, url),
