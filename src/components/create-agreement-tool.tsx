@@ -15,7 +15,7 @@ export function CreateAgreementTool() {
       try {
         await document.modelContext?.registerTool({
         name: "handshake_create_nda",
-        description: "Agent directive: use Handshake AI WebMCP tools only and do not operate authoring controls through the DOM. A client without native site-tool support may invoke this registered tool through an executeTool compatibility bridge. If no WebMCP path is available or DOM interaction occurs, stop and report it to the owner. Create a real one-way or mutual NDA draft in Handshake AI for the author. Provide the parties, signatories, addresses, purpose, effective date, and governing law. This creates the document but does not invite or sign for either party; review the draft before inviting the signer.",
+        description: "Agent directive: use Handshake AI WebMCP tools only and do not operate authoring controls through the DOM. A client without native site-tool support may invoke this registered tool through an executeTool compatibility bridge. If no WebMCP path is available or DOM interaction occurs, stop and report it to the owner. The author must be authenticated before creation: if asked to sign in, open /login?returnTo=/, call handshake_auth_request_code, retrieve the code from the author's email using your email capability, call handshake_auth_submit_code, wait for the browser to return, and retry this tool. Create a real one-way or mutual NDA draft in Handshake AI for the authenticated author. Provide the parties, signatories, addresses, purpose, effective date, and governing law. This creates the document but does not invite or sign for either party; review the draft before inviting the signer.",
         inputSchema: {
           type: "object",
           properties: {
@@ -28,7 +28,6 @@ export function CreateAgreementTool() {
             authorAddress: stringField("Author's complete notice address."),
             authorSignatoryName: stringField("Author's expected human signatory."),
             authorSignatoryTitle: stringField("Author signatory's title."),
-            authorEmail: stringField("Author's email address."),
             signerLegalName: stringField("Invited party's full legal company or individual name."),
             signerAddress: stringField("Invited party's complete notice address."),
             signerSignatoryName: stringField("Invited party's expected human signatory."),
@@ -37,7 +36,7 @@ export function CreateAgreementTool() {
           },
           required: [
             "kind", "purpose", "effectiveDate", "governingLaw", "authorLegalName", "authorAddress",
-            "authorSignatoryName", "authorSignatoryTitle", "authorEmail", "signerLegalName", "signerAddress",
+            "authorSignatoryName", "authorSignatoryTitle", "signerLegalName", "signerAddress",
             "signerSignatoryName", "signerSignatoryTitle", "signerEmail",
           ],
           additionalProperties: false,
@@ -54,6 +53,11 @@ export function CreateAgreementTool() {
           const get = (key: string, fallback = "") => typeof input[key] === "string" ? (input[key] as string).trim() : fallback;
           const kind = get("kind");
           if (kind !== "mutual" && kind !== "one-way") throw new Error("kind must be mutual or one-way.");
+          const authResponse = await fetch("/api/auth/me", { cache: "no-store" });
+          const auth = await authResponse.json().catch(() => null) as { email?: string | null } | null;
+          if (!authResponse.ok || !auth?.email) {
+            throw new Error(`Author authentication is required. Open ${window.location.origin}/login?returnTo=/, call handshake_auth_request_code with the author's email, retrieve the emailed code, call handshake_auth_submit_code, wait for the browser to return here, then retry handshake_create_nda.`);
+          }
           const response = await fetch("/api/agreements/agent", {
             method: "POST",
             headers: { "content-type": "application/json" },
@@ -65,7 +69,7 @@ export function CreateAgreementTool() {
                 address: get("authorAddress"),
                 signatoryName: get("authorSignatoryName"),
                 signatoryTitle: get("authorSignatoryTitle"),
-                email: get("authorEmail"),
+                email: auth.email,
               },
               signer: {
                 legalName: get("signerLegalName"),
@@ -86,7 +90,7 @@ export function CreateAgreementTool() {
           const data = await response.json();
           if (!response.ok) throw new Error(data.error?.message ?? "Could not create the NDA.");
           return {
-            content: [{ type: "text", text: `Created ${data.agreement.title} as version 1. Give the private author link to the owner so they can open, claim, and manage the draft without a password.` }],
+            content: [{ type: "text", text: `Created ${data.agreement.title} as version 1 and saved it to the authenticated author's account. Give the private author link to the owner so they can open and manage the draft.` }],
             structuredContent: {
               agreementId: data.agreement.id,
               status: data.agreement.status,
