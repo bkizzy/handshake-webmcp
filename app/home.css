@@ -1,4 +1,4 @@
-.home-page .hero { min-height: 690px; display: grid; grid-template-columns: .96fr 1.04fr; gap: 64px; align-items: center; padding-top: 32px; padding-bottom: 64px; }
+.home-page .hero { min-height: 690px; display: grid; grid-template-columns: .96fr 1.04fr; gap: 64px; align-items: center; padding-top: 72px; padding-bottom: 64px; }
 .home-page .hero-copy { padding-bottom: 18px; }
 .home-page .hero-copy, .home-page .scene { min-width: 0; }
 .home-page .agent-badge { width: fit-content; display: flex; align-items: center; gap: 7px; margin-bottom: 24px; padding: 7px 10px; color: var(--blue); background: var(--blue-soft); border: 1px solid #dce6ff; border-radius: 999px; font-size: 12px; font-weight: 700; }
