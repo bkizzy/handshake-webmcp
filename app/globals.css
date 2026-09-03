@@ -31,7 +31,7 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.5;
   text-rendering: optimizeLegibility;
 }
@@ -41,7 +41,7 @@ a.brand {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 760;
   letter-spacing: -0.02em;
   text-decoration: none;
@@ -93,6 +93,21 @@ textarea:focus-visible {
   text-decoration: none;
   cursor: pointer;
   transition: background 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.button-primary:hover,
+.button-secondary:hover,
+.button-quiet:hover,
+.button-danger:hover {
+  transform: translateY(-1px);
+}
+
+.button-primary:active,
+.button-secondary:active,
+.button-quiet:active,
+.button-danger:active,
+button:active {
+  transform: scale(0.98);
 }
 
 .button-primary {
@@ -185,6 +200,17 @@ textarea:focus-visible {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   font-weight: 750;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .sr-only {

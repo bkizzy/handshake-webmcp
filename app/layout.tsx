@@ -3,8 +3,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Handshake — Agreements for people and agents", template: "%s — Handshake" },
-  description: "Create, negotiate, and sign agreements—with your agent at the table.",
+  title: { default: "Handshake — eSignature for the agentic era", template: "%s — Handshake" },
+  description: "Prepare, negotiate, approve, and sign agreements in one workspace built for people and AI agents.",
+  icons: { icon: "/handshake-mark.png", apple: "/handshake-mark.png" },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

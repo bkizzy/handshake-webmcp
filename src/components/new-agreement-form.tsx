@@ -172,23 +172,23 @@ export function NewAgreementForm() {
         .section-label { display: flex; align-items: flex-start; gap: 12px; }
         .section-label > span { width: 38px; height: 38px; flex: 0 0 auto; display: grid; place-items: center; color: var(--blue); background: var(--blue-soft); border-radius: 9px; }
         h2 { margin: 1px 0 2px; color: #263147; font-size: 16px; letter-spacing: -.01em; }
-        .section-label p { margin: 0; color: #7a8495; font-size: 12px; line-height: 1.45; }
+        .section-label p { margin: 0; color: #6b7588; font-size: 14px; line-height: 1.5; }
         .section-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 17px; }
         .wide { grid-column: 1 / -1; }
         .kind-field { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; padding: 0; border: 0; }
-        .kind-field legend { grid-column: 1 / -1; margin-bottom: 7px; color: #354057; font-size: 13px; font-weight: 650; }
+        .kind-field legend { grid-column: 1 / -1; margin-bottom: 7px; color: #354057; font-size: 14px; font-weight: 650; }
         .kind-card { min-height: 80px; display: flex; align-items: flex-start; gap: 10px; padding: 14px; border: 1px solid #cfd6e2; border-radius: 9px; cursor: pointer; transition: border-color 150ms, background 150ms; }
         .kind-card.selected { border-color: var(--blue); background: #f8faff; box-shadow: 0 0 0 2px rgba(36, 87, 214, .08); }
         .kind-card input { margin-top: 3px; accent-color: var(--blue); }
         .kind-card span { display: grid; gap: 3px; }
-        .kind-card b { color: #303b51; font-size: 13px; }
-        .kind-card small { color: #7a8495; font-size: 11px; line-height: 1.4; }
+        .kind-card b { color: #303b51; font-size: 15px; }
+        .kind-card small { color: #697488; font-size: 14px; line-height: 1.45; }
         .form-footer { padding: 28px 39px; display: flex; align-items: center; justify-content: space-between; gap: 28px; background: #fbfcfe; }
-        .agent-note { max-width: 510px; display: flex; align-items: flex-start; gap: 10px; color: #6e788b; font-size: 11px; line-height: 1.5; }
+        .agent-note { max-width: 540px; display: flex; align-items: flex-start; gap: 10px; color: #657084; font-size: 14px; line-height: 1.5; }
         .agent-note :global(svg) { flex: 0 0 auto; margin-top: 1px; color: var(--blue); }
         .agent-note b { color: #3c475c; }
         .submit-area { display: flex; align-items: center; gap: 14px; }
-        .submit-area p { max-width: 180px; margin: 0; color: var(--red); font-size: 11px; }
+        .submit-area p { max-width: 210px; margin: 0; color: var(--red); font-size: 14px; }
         .submit-area :global(.button-primary) { min-width: 145px; }
         @media (max-width: 760px) {
           .form-section { grid-template-columns: 1fr; gap: 26px; padding: 30px 22px; }

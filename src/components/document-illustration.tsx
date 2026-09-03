@@ -17,11 +17,11 @@ export function DocumentIllustration() {
       <div className="document-card">
         <div className="document-top">
           <span className="doc-icon"><span /></span>
-          <div><b>Mutual NDA</b><small>Version 4 · In review</small></div>
+          <div><b>Partnership agreement</b><small>Version 4 · In review</small></div>
           <span className="status-dot"><i /> Live</span>
         </div>
         <div className="paper">
-          <div className="paper-kicker">Mutual non-disclosure agreement</div>
+          <div className="paper-kicker">Agreement ready for review</div>
           <div className="paper-title-line" />
           <div className="paper-title-line short" />
           <div className="paper-rule" />
@@ -33,7 +33,7 @@ export function DocumentIllustration() {
             <span className="inserted">two years</span>
           </div>
           <div className="clause second">
-            <b>8. Pre-existing materials</b>
+            <b>Appendix A. Known information</b>
             <span className="line full" />
             <span className="line long" />
             <span className="line short" />
@@ -51,7 +51,7 @@ export function DocumentIllustration() {
       </div>
       <div className="comment comment-right">
         <span className="comment-icon"><PenLine size={15} /></span>
-        <div><b>Prior work added</b><small>Proposed by signer</small></div>
+        <div><b>Appendix updated</b><small>Proposed by signer agent</small></div>
         <span className="open-pill">Open</span>
       </div>
       <div className="human human-left"><UserRound size={14} /><span>Human approved</span></div>
@@ -172,4 +172,3 @@ export function DocumentIllustration() {
     </div>
   );
 }
-

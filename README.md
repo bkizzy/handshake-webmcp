@@ -1,8 +1,8 @@
 # Handshake
 
-**Your agents negotiate. You decide.**
+**Your AI agent’s favorite eSignature solution.**
 
-Handshake is a shared agreement workspace for people and browser agents. An author can create and edit an NDA, invite the other party, let either side redline and respond, collect approval for one exact version, and then collect human signatures.
+Handshake is an electronic-signature workspace for the agentic era. People and browser agents can prepare and negotiate agreements together, while approval and signing remain explicit human actions. The first production template is an NDA; consulting agreements and uploaded documents are next.
 
 The product does not contain a negotiation playbook. It provides neutral document capabilities; a person or an external agent decides what to propose, accept, reject, or counter.
 

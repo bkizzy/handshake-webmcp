@@ -85,14 +85,14 @@ const styles = `
   .login-card { padding: 39px; border: 1px solid #d9e0e9; border-radius: 14px; background: white; box-shadow: 0 18px 55px rgba(25, 37, 63, .09); text-align: center; }
   .login-icon { width: 48px; height: 48px; margin: 0 auto 19px; display: grid; place-items: center; color: var(--blue); background: var(--blue-soft); border-radius: 12px; }
   h1 { margin: 11px 0 0; color: #263147; font-size: 28px; line-height: 1.15; letter-spacing: -.035em; }
-  .intro { margin: 11px 0 25px; color: #707a8d; font-size: 13px; line-height: 1.55; }
+  .intro { margin: 11px 0 25px; color: #657084; font-size: 15px; line-height: 1.55; }
   .intro b { color: #4c586e; }
   form { display: grid; gap: 13px; text-align: left; }
   form .button-primary, .dev-button { width: 100%; margin-top: 4px; }
   .code-input { height: 55px; font-size: 23px; letter-spacing: .28em; text-align: center; font-weight: 700; }
-  .change-email { min-height: 35px; border: 0; color: var(--blue); background: transparent; font-size: 11px; font-weight: 650; cursor: pointer; }
-  .auth-error { margin: 14px 0 0; color: var(--red); font-size: 11px; }
-  .review-note { margin: 24px -39px -39px; padding: 17px 24px; display: flex; justify-content: center; align-items: center; gap: 7px; color: #687387; background: #fafbfd; border-top: 1px solid var(--soft-line); border-radius: 0 0 14px 14px; font-size: 10px; }
+  .change-email { min-height: 44px; border: 0; color: var(--blue); background: transparent; font-size: 14px; font-weight: 650; cursor: pointer; }
+  .auth-error { margin: 14px 0 0; color: var(--red); font-size: 14px; }
+  .review-note { margin: 24px -39px -39px; padding: 18px 24px; display: flex; justify-content: center; align-items: center; gap: 7px; color: #5f6a7e; background: #fafbfd; border-top: 1px solid var(--soft-line); border-radius: 0 0 14px 14px; font-size: 13px; line-height: 1.45; }
   .review-note svg { color: var(--green); }
   .spin { animation: spin 800ms linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }

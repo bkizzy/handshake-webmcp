@@ -1,9 +1,9 @@
-.home-page .hero { min-height: 670px; display: grid; grid-template-columns: .94fr 1.06fr; gap: 62px; align-items: center; padding-top: 54px; padding-bottom: 52px; }
+.home-page .hero { min-height: 690px; display: grid; grid-template-columns: .96fr 1.04fr; gap: 64px; align-items: center; padding-top: 64px; padding-bottom: 64px; }
 .home-page .hero-copy { padding-bottom: 18px; }
 .home-page .agent-badge { width: fit-content; display: flex; align-items: center; gap: 7px; margin-bottom: 24px; padding: 7px 10px; color: var(--blue); background: var(--blue-soft); border: 1px solid #dce6ff; border-radius: 999px; font-size: 12px; font-weight: 700; }
-.home-page h1 { margin: 0; color: #172033; font-size: clamp(47px, 5.2vw, 70px); line-height: 1.01; letter-spacing: -.055em; font-weight: 730; }
+.home-page h1 { max-width: 690px; margin: 0; color: #172033; font-size: clamp(48px, 5.35vw, 72px); line-height: 1.02; letter-spacing: -.052em; font-weight: 730; }
 .home-page h1 span { color: var(--blue); }
-.home-page .hero-subhead { max-width: 590px; margin: 25px 0 0; color: #5e697e; font-size: 18px; line-height: 1.65; }
+.home-page .hero-subhead { max-width: 620px; margin: 25px 0 0; color: #556176; font-size: 19px; line-height: 1.62; }
 .home-page .hero-actions { display: flex; gap: 11px; margin-top: 31px; }
 .home-page .hero-actions .button-primary, .home-page .hero-actions .button-secondary { min-height: 49px; padding-left: 20px; padding-right: 20px; }
 .home-page .hero-proof { margin: 18px 0 0; display: flex; align-items: center; gap: 6px; color: #737e91; font-size: 12px; font-weight: 600; }
@@ -28,6 +28,11 @@
 .home-page .closing .eyebrow { color: #9bb6ff; }
 .home-page .closing .button-primary { flex: 0 0 auto; background: white; color: #1d49bb; }
 .home-page footer { min-height: 90px; display: flex; align-items: center; justify-content: space-between; color: #7a8495; font-size: 12px; }
+.home-page .hero-copy, .home-page .scene { animation: home-enter 520ms cubic-bezier(.2,.75,.25,1) both; }
+.home-page .scene { animation-delay: 90ms; }
+.home-page .steps article { transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease; }
+.home-page .steps article:hover { z-index: 1; transform: translateY(-3px); background: #fcfdff; box-shadow: 0 8px 24px rgba(23,32,51,.08); }
+@keyframes home-enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 900px) {
   .home-page .hero { grid-template-columns: 1fr; gap: 16px; padding-top: 70px; text-align: center; }
   .home-page .hero-copy { display: grid; justify-items: center; }

@@ -335,7 +335,7 @@ export function DealWorkspace({ id }: { id: string }) {
   const closed = agreement.status === "declined" || agreement.status === "voided";
 
   return (
-    <main className="workspace">
+    <main className={`workspace${working ? " is-working" : ""}`}>
       <header className="workspace-header">
         <Brand />
         <div className="document-identity"><span>{agreement.title}</span><small>Version {agreement.version} · {saveState === "saving" ? "Saving…" : "Saved"}</small></div>
