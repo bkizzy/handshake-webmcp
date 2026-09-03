@@ -102,7 +102,7 @@ export function LoginForm({ returnTo = "/dashboard" }: { returnTo?: string }) {
   return (
     <section className="login-card">
       <span className="login-icon">{step === "email" ? <Mail size={22} /> : <KeyRound size={22} />}</span>
-      <p className="eyebrow">Handshake AI sign in</p>
+      <p className="eyebrow">Mutual Assent AI sign in</p>
       <h1>{step === "email" ? "Continue with email" : "Check your inbox"}</h1>
       <p className="intro">{step === "email" ? "We’ll send a one-time numeric code. No password to remember." : <>Enter the code sent to <b>{email}</b>.</>}</p>
       {step === "email" ? (

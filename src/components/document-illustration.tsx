@@ -17,7 +17,7 @@ export function DocumentIllustration() {
       <div className="document-card">
         <div className="document-top">
           <span className="doc-icon"><span /></span>
-          <div><b>Partnership agreement</b><small>Version 4 · In review</small></div>
+          <div><b>Mutual NDA</b><small>Version 4 · In review</small></div>
           <span className="status-dot"><i /> Live</span>
         </div>
         <div className="paper">
@@ -70,7 +70,7 @@ export function DocumentIllustration() {
           z-index: -2;
         }
         .document-card {
-          width: min(430px, 78%);
+          width: min(500px, 90%);
           position: absolute;
           left: 50%;
           top: 62px;
