@@ -1,7 +1,8 @@
 import { resolveAgreementAccess } from "@/src/lib/agreements/access";
 import { buildNegotiationCertificate } from "@/src/lib/agreements/certificate";
-import { renderAgreementMarkdown } from "@/src/lib/agreements/contract";
+import { knownInformationField, renderAgreementMarkdown, visibleKnownInformationRoles } from "@/src/lib/agreements/contract";
 import { AgreementError } from "@/src/lib/agreements/domain";
+import { buildAgreementPdf } from "@/src/lib/agreements/pdf";
 import { saveAgreement } from "@/src/lib/agreements/repository";
 import { sealSignedAgreement } from "@/src/lib/agreements/seal";
 import type { NegotiationCertificate, StoredAgreement } from "@/src/lib/agreements/types";
@@ -20,7 +21,8 @@ const printStyles = `body{max-width:780px;margin:48px auto;padding:0 28px;color:
 function contractHtml(agreement: StoredAgreement) {
   const sections = agreement.sections.map((section) => `<section><h2>${escapeHtml(section.title)}</h2><p>${escapeHtml(section.body)}</p></section>`).join("");
   const signatures = ([agreement.signatures.author, agreement.signatures.signer]).filter(Boolean).map((signature) => `<div><strong>${escapeHtml(signature!.typedName)}</strong><br><small>${escapeHtml(signature!.verifiedEmail)} verified by email code<br>Signed ${escapeHtml(signature!.signedAt)} · version ${signature!.documentVersion}</small></div>`).join("");
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>${escapeHtml(agreement.title)}</title><style>${printStyles}</style></head><body><header><p>${escapeHtml(agreement.template.name)}</p><h1>${escapeHtml(agreement.title)}</h1><p>Executed ${escapeHtml(agreement.execution!.finalizedAt)}</p></header><dl><dt>Effective date</dt><dd>${escapeHtml(agreement.fields.effectiveDate)}</dd><dt>Purpose</dt><dd>${escapeHtml(agreement.fields.purpose)}</dd><dt>Governing law</dt><dd>${escapeHtml(agreement.fields.governingLaw)}</dd><dt>Pre-existing materials</dt><dd>${escapeHtml(agreement.fields.preExistingMaterials || "None listed")}</dd></dl><div class="parties"><div><h2>Author</h2><strong>${escapeHtml(agreement.author.legalName)}</strong><p>${escapeHtml(agreement.author.address)}</p></div><div><h2>Signer</h2><strong>${escapeHtml(agreement.signer.legalName)}</strong><p>${escapeHtml(agreement.signer.address)}</p></div></div>${sections}<div class="signatures">${signatures}</div><div class="seal"><strong>SHA-256 execution seal</strong><br>${escapeHtml(agreement.execution!.sealHash ?? agreement.execution!.sha256 ?? "Unavailable")}</div><p class="footer">This final presentation contains the executed terms. The separately downloadable Certificate of Negotiation records attributed agreement actions. Private agent prompts and conversations remain outside Handshake.</p><script>addEventListener("load",()=>setTimeout(()=>print(),150))</script></body></html>`;
+  const appendices = visibleKnownInformationRoles(agreement).map((role, index) => `<section><h2>Appendix ${String.fromCharCode(65 + index)} — Previously Known Information of ${escapeHtml(agreement[role].legalName)}</h2><p>${escapeHtml(agreement.fields[knownInformationField(role)] || "None disclosed.")}</p></section>`).join("");
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>${escapeHtml(agreement.title)}</title><style>${printStyles}</style></head><body><header><p>${escapeHtml(agreement.template.name)}</p><h1>${escapeHtml(agreement.title)}</h1><p>Executed ${escapeHtml(agreement.execution!.finalizedAt)}</p></header><dl><dt>Effective date</dt><dd>${escapeHtml(agreement.fields.effectiveDate)}</dd><dt>Purpose</dt><dd>${escapeHtml(agreement.fields.purpose)}</dd><dt>Governing law</dt><dd>${escapeHtml(agreement.fields.governingLaw)}</dd></dl><div class="parties"><div><h2>Author</h2><strong>${escapeHtml(agreement.author.legalName)}</strong><p>${escapeHtml(agreement.author.address)}</p></div><div><h2>Signer</h2><strong>${escapeHtml(agreement.signer.legalName)}</strong><p>${escapeHtml(agreement.signer.address)}</p></div></div>${sections}<div class="signatures">${signatures}</div>${appendices}<div class="seal"><strong>SHA-256 execution seal</strong><br>${escapeHtml(agreement.execution!.sealHash ?? agreement.execution!.sha256 ?? "Unavailable")}</div><p class="footer">This final presentation contains the executed terms. The separately downloadable Certificate of Negotiation records attributed agreement actions. Private agent prompts and conversations remain outside Handshake.</p><script>addEventListener("load",()=>setTimeout(()=>print(),150))</script></body></html>`;
 }
 
 function certificateHtml(certificate: NegotiationCertificate) {
@@ -34,18 +36,25 @@ export async function GET(request: Request, context: RouteContext) {
     const { id } = await context.params;
     const { agreement: current } = await resolveAgreementAccess(id, request);
     let agreement = current;
-    if (agreement.status !== "signed" || !agreement.execution) {
-      throw new AgreementError("The execution package is available after both parties sign.", "not_executed", 409);
-    }
-    if (!agreement.execution.canonicalJson || !agreement.execution.sealHash) {
+    if (agreement.status === "signed" && agreement.execution && (!agreement.execution.canonicalJson || !agreement.execution.sealHash)) {
       agreement = await sealSignedAgreement(agreement);
       await saveAgreement(agreement, { expectedUpdatedAt: current.updatedAt });
+    }
+    const format = new URL(request.url).searchParams.get("format") ?? "pdf";
+    if (format === "pdf") {
+      const filename = `handshake-${agreement.id}-agreement-v${agreement.version}.pdf`;
+      const pdf = await buildAgreementPdf(agreement);
+      const pdfBody = new ArrayBuffer(pdf.byteLength);
+      new Uint8Array(pdfBody).set(pdf);
+      return new Response(pdfBody, { headers: { "content-type": "application/pdf", "content-disposition": `inline; filename="${filename}"`, "x-filename": filename, "cache-control": "private, no-store" } });
+    }
+    if (agreement.status !== "signed" || !agreement.execution) {
+      throw new AgreementError("The execution package is available after both parties sign.", "not_executed", 409);
     }
     const execution = agreement.execution;
     if (!execution?.canonicalJson || !execution.sealHash) {
       throw new AgreementError("The execution package could not be sealed.", "seal_unavailable", 500);
     }
-    const format = new URL(request.url).searchParams.get("format") ?? "print-contract";
     if (format === "markdown") {
       const filename = `handshake-${agreement.id}-agreement.md`;
       return new Response(renderAgreementMarkdown(agreement), { headers: { "content-type": "text/markdown; charset=utf-8", "content-disposition": `attachment; filename="${filename}"`, "x-filename": filename, "cache-control": "private, no-store" } });

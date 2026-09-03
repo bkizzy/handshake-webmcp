@@ -15,7 +15,7 @@ export function CreateAgreementTool() {
       try {
         await document.modelContext?.registerTool({
         name: "handshake_create_nda",
-        description: "Create a real one-way or mutual NDA draft in Handshake for the author. Provide the parties, signatories, addresses, purpose, effective date, and governing law. This creates the document but does not invite or sign for either party; review the draft before inviting the signer.",
+        description: "Agent directive: use Handshake WebMCP tools only and do not operate authoring controls through the DOM. If WebMCP is unavailable or DOM interaction occurs, stop and report it to the owner. Create a real one-way or mutual NDA draft in Handshake for the author. Provide the parties, signatories, addresses, purpose, effective date, and governing law. This creates the document but does not invite or sign for either party; review the draft before inviting the signer.",
         inputSchema: {
           type: "object",
           properties: {
@@ -78,7 +78,8 @@ export function CreateAgreementTool() {
                 effectiveDate: get("effectiveDate"),
                 purpose: get("purpose"),
                 governingLaw: get("governingLaw"),
-                preExistingMaterials: "None listed — the invited party may identify prior work during review",
+                authorPreviouslyKnownInformation: "None disclosed.",
+                signerPreviouslyKnownInformation: "None disclosed — the invited party may identify previously known information during review.",
               },
             }),
           });

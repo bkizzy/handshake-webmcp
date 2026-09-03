@@ -9,13 +9,14 @@ The product does not contain a negotiation playbook. It provides neutral documen
 ## Product flow
 
 1. A person chooses an NDA from the agreement-type screen, or an agent creates one directly.
-2. Handshake returns a private author magic link. Signed-in authors also see the draft in their in-progress dashboard.
+2. Handshake returns a private author magic link. Signed-in authors see the draft in their in-progress dashboard.
 3. The author edits the autosaved draft and invites the signer by a separate secure link.
 4. Either party—or either party's browser agent—can propose redlines.
 5. The other party can accept, reject, or counter each proposal.
 6. Both parties approve the current version after all redlines are resolved.
 7. Each human requests a six-digit email code, reviews the electronic-signature consent, and signs. Handshake exposes no agent signing tool.
-8. The executed version is locked with a deterministic SHA-256 seal and retained alongside a Certificate of Negotiation.
+8. Either party may sign in with the matching email to retain the agreement in their profile.
+9. The executed version is locked with a deterministic SHA-256 seal and retained alongside a Certificate of Negotiation and a generated PDF.
 
 Any new change clears both approvals and any partial signatures. A completed agreement is read-only.
 
@@ -37,6 +38,7 @@ Handshake registers imperative WebMCP tools through `document.modelContext`. The
 - `handshake_get_activity`
 - `handshake_wait_for_update`
 - `handshake_resend_signer_link`
+- `handshake_restore_document_version`
 - `handshake_decline_agreement`
 - `handshake_void_agreement`
 - `handshake_get_certificate` (signed only)
@@ -44,7 +46,9 @@ Handshake registers imperative WebMCP tools through `document.modelContext`. The
 - `handshake_get_execution_package` (signed only)
 - `handshake_recover_agreement_access` (recovery page)
 
-Agents can create, retrieve, edit, invite, redline, respond, approve, correct participants, recover access, close, and inspect executed records. Signing is intentionally absent from the WebMCP surface and is accepted only by the human action endpoint after email-code verification.
+Agents can create, retrieve, edit, invite, redline, respond, approve, restore a historical version as a new audited version, correct participants, recover access, close, and inspect executed records. Signing is intentionally absent from the WebMCP surface and is accepted only by the human action endpoint after email-code verification. Mutating tools require a stable request ID, so retrying an action cannot repeat side effects such as invitation email.
+
+The deal page directs agents to use WebMCP rather than agreement controls in the DOM and to report any limitation or violation to their owner. This is a transparent operating directive, not a security boundary. A client without native site-tool support can expose an `executeTool` compatibility bridge to the registered Handshake tools.
 
 Open `http://localhost:3000/webmcp` in the Codex built-in browser to verify the integration. The page separately checks API injection, successful tool registration, and an actual agent invocation. With GPT-5.6 Sol or Terra selected, make sure **Settings → Browser → Permissions → Enable site tools** is on, then inspect **Site tools** in the browser address bar.
 
@@ -86,7 +90,7 @@ EMAIL_FROM
 NEXT_PUBLIC_APP_URL
 ```
 
-When Supabase is configured, an authenticated author owns each created agreement. An anonymous or agent-created agreement can be claimed by signing in with the matching author email. Signers continue to use a no-account secure access link.
+When Supabase is configured, an authenticated author owns each created agreement. An anonymous or agent-created agreement can be saved by signing in with the matching author email. Signers can still review and sign from a no-account secure access link, or sign in with the invited email to save the agreement in their own in-progress and executed-agreement views.
 
 ## Architecture
 
@@ -102,7 +106,7 @@ Raw access tokens are never stored. Each author and signer link carries an indep
 
 This is capability-link authentication appropriate for the hackathon. A production hardening pass would add email-bound accounts for both parties, shorter-lived/revocable sessions, rate limiting, and stronger identity verification.
 
-Handshake uses an event cursor on every mutation to reject stale actions before they can overwrite newer work. While an agent is active, `handshake_wait_for_update` polls the server briefly. For negotiations spanning hours or days, Handshake sends one actionable email handoff and groups later changes until that party reads or acknowledges the batch; the next post-acknowledgement change starts a new handoff.
+Handshake uses an event cursor on every mutation to reject stale actions before they can overwrite newer work. While an agent is active, `handshake_wait_for_update` polls the server briefly. For negotiations spanning hours or days, Handshake sends one actionable email handoff and groups later changes until that party reads or acknowledges the batch; the next post-acknowledgement change starts a new handoff. Previously known information is supplied by the party claiming the exclusion, appears in a party-specific appendix, and remains subject to the agreement's written-record proof standard.
 
 At the second signature, Handshake deterministically serializes the final terms, final contract text, complete action history, and both verified signatures, then seals that canonical record with SHA-256. This proves the stored record has not changed after sealing; it is not a blockchain and not a substitute for a qualified e-signature provider.
 

@@ -110,7 +110,7 @@ export function sendAgreementRecovery(agreement: StoredAgreement, role: PartyRol
 export function sendLoginCode(email: string, code: string) {
   return sendEmail(email, {
     subject: "Your Handshake sign-in code",
-    eyebrow: "Author sign in",
+    eyebrow: "Handshake sign in",
     heading: "Your one-time sign-in code",
     body: code,
     footer: "Enter this code in Handshake. It expires shortly and can only be used once.",

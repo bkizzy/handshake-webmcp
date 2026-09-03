@@ -12,8 +12,15 @@ export const agreementFieldLabels: Record<keyof AgreementFields, string> = {
   effectiveDate: "Effective date",
   purpose: "Purpose",
   governingLaw: "Governing law",
-  preExistingMaterials: "Pre-existing materials",
+  authorPreviouslyKnownInformation: "Author’s previously known information",
+  signerPreviouslyKnownInformation: "Signer’s previously known information",
 };
+
+export const agreementSummaryFieldIds: Array<keyof AgreementFields> = [
+  "effectiveDate",
+  "purpose",
+  "governingLaw",
+];
 
 export const signatureConsentVersion = "handshake-esign-consent-v1";
 
@@ -21,12 +28,20 @@ export function templateForKind(kind: AgreementKind): AgreementTemplate {
   return {
     id: kind === "mutual" ? "handshake-mutual-nda" : "handshake-one-way-nda",
     name: kind === "mutual" ? "Mutual non-disclosure agreement" : "One-way non-disclosure agreement",
-    version: "1.0",
+    version: "2.0",
   };
 }
 
 export function targetKey(target: { kind: "field" | "section"; id: string }) {
   return `${target.kind}:${target.id}`;
+}
+
+export function knownInformationField(role: PartyRole): keyof AgreementFields {
+  return role === "author" ? "authorPreviouslyKnownInformation" : "signerPreviouslyKnownInformation";
+}
+
+export function visibleKnownInformationRoles(agreement: Pick<Agreement, "kind">): PartyRole[] {
+  return agreement.kind === "mutual" ? ["author", "signer"] : ["signer"];
 }
 
 export function finalTerms(agreement: Agreement) {
@@ -43,30 +58,37 @@ export function finalTerms(agreement: Agreement) {
   return [...fields, ...sections].sort((left, right) => left.id.localeCompare(right.id));
 }
 
-function partyMarkdown(agreement: Agreement, role: PartyRole) {
+function partyBlock(agreement: Agreement, role: PartyRole) {
   const party = agreement[role];
-  return [
-    `**${party.legalName}**`,
-    party.address,
-    `${party.signatoryName}, ${party.signatoryTitle}`,
-    party.email,
-  ].join("  \n");
+  const definedRole = agreement.kind === "mutual"
+    ? role === "author" ? "First Party" : "Second Party"
+    : role === "author" ? "Disclosing Party" : "Receiving Party";
+  return `**${party.legalName}** (the “${definedRole}”)  \n${party.address}  \nAttention: ${party.signatoryName}, ${party.signatoryTitle}  \n${party.email}`;
+}
+
+function signatureBlock(agreement: Agreement, role: PartyRole) {
+  const party = agreement[role];
+  const signature = agreement.signatures[role];
+  const heading = agreement.kind === "mutual"
+    ? role === "author" ? "First Party" : "Second Party"
+    : role === "author" ? "Disclosing Party" : "Receiving Party";
+  return signature
+    ? `### ${heading}\n\n**${party.legalName}**  \nBy: **${signature.typedName}**  \nTitle: ${party.signatoryTitle}  \nSigned electronically: ${signature.signedAt} UTC  \nEmail verified: ${signature.verifiedEmail}`
+    : `### ${heading}\n\n**${party.legalName}**  \nBy: ${party.signatoryName}  \nTitle: ${party.signatoryTitle}  \nDate: ____________________`;
 }
 
 export function renderAgreementMarkdown(agreement: Agreement) {
-  const details = (Object.keys(agreementFieldLabels) as Array<keyof AgreementFields>)
-    .map((key) => `- **${agreementFieldLabels[key]}:** ${agreement.fields[key] || "None listed"}`)
-    .join("\n");
+  const parties = agreement.kind === "mutual"
+    ? `This Mutual Non-Disclosure Agreement (the “Agreement”) is entered into as of **${agreement.fields.effectiveDate}** (the “Effective Date”) by and between:\n\n${partyBlock(agreement, "author")}\n\nand\n\n${partyBlock(agreement, "signer")}\n\nEach may be a “Disclosing Party” or “Receiving Party” depending on the circumstances, and together they are the “Parties.”`
+    : `This Non-Disclosure Agreement (the “Agreement”) is entered into as of **${agreement.fields.effectiveDate}** (the “Effective Date”) by and between:\n\n${partyBlock(agreement, "author")}\n\nand\n\n${partyBlock(agreement, "signer")}\n\nTogether, they are the “Parties.”`;
   const sections = agreement.sections.map((section) => `## ${section.title}\n\n${section.body}`).join("\n\n");
-  const signatures = (["author", "signer"] as PartyRole[]).map((role) => {
+  const appendices = visibleKnownInformationRoles(agreement).map((role, index) => {
     const party = agreement[role];
-    const signature = agreement.signatures[role];
-    return signature
-      ? `### ${role === "author" ? "Author" : "Signer"}\n\nSigned electronically by **${signature.typedName}**  \n${party.signatoryTitle}, ${party.legalName}  \n${signature.signedAt} UTC  \nVerified by ${signature.verificationMethod.replace("_", " ")}`
-      : `### ${role === "author" ? "Author" : "Signer"}\n\n${party.signatoryName}  \n${party.signatoryTitle}, ${party.legalName}`;
+    const value = agreement.fields[knownInformationField(role)]?.trim() || "None disclosed.";
+    const letter = String.fromCharCode(65 + index);
+    return `## Appendix ${letter} — Previously Known Information of ${party.legalName}\n\nThe following information is identified by ${party.legalName} as information it knew lawfully and without restriction before disclosure under this Agreement:\n\n${value}`;
   }).join("\n\n");
-
-  return `# ${agreement.title}\n\n_${agreement.template.name}_\n\n${details}\n\n## Parties\n\n### Author\n\n${partyMarkdown(agreement, "author")}\n\n### Signer\n\n${partyMarkdown(agreement, "signer")}\n\n${sections}\n\n## Signatures\n\n${signatures}\n`;
+  return `# ${agreement.title}\n\n_${agreement.template.name} · Template ${agreement.template.version}_\n\n${parties}\n\n**Purpose.** The Parties wish to evaluate or pursue ${agreement.fields.purpose}.\n\n${sections}\n\n## Signatures\n\nThe Parties intend electronic signatures to have the same effect as original signatures.\n\n${signatureBlock(agreement, "author")}\n\n${signatureBlock(agreement, "signer")}\n\n${appendices}\n`;
 }
 
 function versionForReview(agreement: Agreement): AgreementVersion | undefined {

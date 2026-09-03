@@ -59,7 +59,7 @@ export function LoginForm({ returnTo = "/dashboard" }: { returnTo?: string }) {
   return (
     <section className="login-card">
       <span className="login-icon">{step === "email" ? <Mail size={22} /> : <KeyRound size={22} />}</span>
-      <p className="eyebrow">Author sign in</p>
+      <p className="eyebrow">Handshake sign in</p>
       <h1>{step === "email" ? "Continue with email" : "Check your inbox"}</h1>
       <p className="intro">{step === "email" ? "We’ll send a one-time numeric code. No password to remember." : <>Enter the code sent to <b>{email}</b>.</>}</p>
       {step === "email" ? (
@@ -75,7 +75,7 @@ export function LoginForm({ returnTo = "/dashboard" }: { returnTo?: string }) {
         </form>
       )}
       {error && <p className="auth-error" role="alert">{error}</p>}
-      <div className="review-note"><Check size={14} /><span>Invitees never need an account to review or sign.</span></div>
+      <div className="review-note"><Check size={14} /><span>An account is optional for invited signers; sign in to save the agreement to your profile.</span></div>
       <style jsx>{styles}</style>
     </section>
   );

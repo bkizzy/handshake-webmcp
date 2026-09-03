@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { renderAgreementMarkdown } from "@/src/lib/agreements/contract";
 import type { AgreementAction, AgreementView, RedlineTarget } from "@/src/lib/agreements/types";
@@ -9,7 +9,7 @@ type PerformAction = (
   action: AgreementAction,
   source?: "human" | "agent",
   idempotencyKey?: string,
-) => Promise<{ agreement: AgreementView; invitation?: { email: string; url?: string; delivered: boolean } }>;
+) => Promise<{ agreement: AgreementView; invitation?: { email: string; url?: string; delivered: boolean }; replayed?: boolean }>;
 
 type ToolRegistration = Omit<WebMcpTool, "execute"> & {
   execute: (input: Record<string, unknown>) => Promise<WebMcpToolResult> | WebMcpToolResult;
@@ -31,10 +31,16 @@ const objectSchema = (properties: Record<string, unknown>, required: string[] = 
 });
 const emptySchema = objectSchema({});
 const stringSchema = (description: string) => ({ type: "string", description });
-const requestIdSchema = stringSchema("Optional stable unique request ID. Reuse it only when retrying the exact same action.");
+const requestIdSchema = stringSchema("Stable unique request ID. Reuse this exact value when retrying the same action so Handshake cannot repeat side effects.");
+const agentDirective = "Agent directive: use Handshake WebMCP tools only; do not operate agreement controls through the DOM. A client without native site-tool support may invoke these registered tools through an executeTool compatibility bridge. If no WebMCP path is available or you use the DOM, stop and report that limitation or violation to your owner.";
+
+export type AgreementWebMcpState = {
+  phase: "unsupported" | "registering" | "registered" | "invoked" | "error";
+  lastInvocation?: { tool: string; at: string };
+};
 
 function textResult(message: string, data: Record<string, unknown> = {}): WebMcpToolResult {
-  return { content: [{ type: "text", text: message }], structuredContent: data };
+  return JSON.parse(JSON.stringify({ content: [{ type: "text", text: message }], structuredContent: { ok: true, ...data } })) as WebMcpToolResult;
 }
 
 function requiredString(input: Record<string, unknown>, key: string) {
@@ -52,10 +58,10 @@ function targetFromInput(input: Record<string, unknown>): RedlineTarget {
   const targetKind = requiredString(input, "targetKind");
   const targetId = requiredString(input, "targetId");
   if (targetKind === "field") {
-    if (!["effectiveDate", "purpose", "governingLaw", "preExistingMaterials"].includes(targetId)) {
+    if (!["effectiveDate", "purpose", "governingLaw", "authorPreviouslyKnownInformation", "signerPreviouslyKnownInformation"].includes(targetId)) {
       throw new Error("targetId must identify an editable agreement field.");
     }
-    return { kind: "field", id: targetId as "effectiveDate" | "purpose" | "governingLaw" | "preExistingMaterials" };
+    return { kind: "field", id: targetId as "effectiveDate" | "purpose" | "governingLaw" | "authorPreviouslyKnownInformation" | "signerPreviouslyKnownInformation" };
   }
   if (targetKind === "section") return { kind: "section", id: targetId };
   throw new Error("targetKind must be field or section.");
@@ -66,32 +72,37 @@ function sleep(milliseconds: number) {
 }
 
 export function useAgreementTools({ id, agreement, performAction, authHeaders, onAgreement }: ToolOptions) {
-  const [state, setState] = useState<"unavailable" | "connected">("unavailable");
+  const lastInvocation = useRef<AgreementWebMcpState["lastInvocation"]>(undefined);
+  const [state, setState] = useState<AgreementWebMcpState>({ phase: "registering" });
 
   useEffect(() => {
     let active = true;
-    const updateState = (next: "unavailable" | "connected") => queueMicrotask(() => active && setState(next));
+    const updateState = (next: AgreementWebMcpState) => queueMicrotask(() => active && setState(next));
     if (!agreement || !document.modelContext) {
-      updateState("unavailable");
+      updateState({ phase: "unsupported" });
       return () => { active = false; };
     }
 
     const controller = new AbortController();
+    updateState({ phase: "registering", lastInvocation: lastInvocation.current });
     const commonAnnotations = { destructiveHint: false, openWorldHint: false, untrustedContentHint: true };
 
     async function acknowledge(throughSequence: number) {
-      await fetch(`/api/agreements/${id}/acknowledge`, {
+      const response = await fetch(`/api/agreements/${id}/acknowledge`, {
         method: "POST",
         headers: authHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({ throughSequence }),
       });
+      if (!response.ok) throw new Error("Could not acknowledge the agreement update.");
     }
 
     async function freshAgreement() {
       const response = await fetch(`/api/agreements/${id}`, { cache: "no-store", headers: authHeaders() });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error?.message ?? "Could not read the agreement.");
-      onAgreement(data.agreement);
+      // Let WebMCP serialize the successful result before React tears down and
+      // re-registers the tools for the newly fetched agreement object.
+      window.setTimeout(() => onAgreement(data.agreement), 75);
       return data.agreement as AgreementView;
     }
 
@@ -103,7 +114,7 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
         annotations: { ...commonAnnotations, readOnlyHint: true, idempotentHint: true },
         execute: async () => {
           const latest = await freshAgreement();
-          await acknowledge(latest.eventSequence);
+          await acknowledge(latest.eventSequence).catch(() => undefined);
           return textResult(`${latest.title} is version ${latest.version} and ${latest.status}. You are the ${latest.viewerRole}.`, { agreement: latest });
         },
       },
@@ -114,7 +125,7 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
         annotations: { ...commonAnnotations, readOnlyHint: true, idempotentHint: true },
         execute: async () => {
           const latest = await freshAgreement();
-          await acknowledge(latest.eventSequence);
+          await acknowledge(latest.eventSequence).catch(() => undefined);
           return textResult(`Retrieved ${latest.title}, version ${latest.version}.`, {
             agreementId: latest.id,
             status: latest.status,
@@ -133,7 +144,7 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
         annotations: { ...commonAnnotations, readOnlyHint: true, idempotentHint: true },
         execute: async () => {
           const latest = await freshAgreement();
-          await acknowledge(latest.eventSequence);
+          await acknowledge(latest.eventSequence).catch(() => undefined);
           const open = latest.redlines.filter((redline) => redline.status === "open");
           return textResult(`${open.length} open redline${open.length === 1 ? "" : "s"} on version ${latest.version}.`, { redlines: latest.redlines, version: latest.version, eventSequence: latest.eventSequence });
         },
@@ -145,7 +156,7 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
         annotations: { ...commonAnnotations, readOnlyHint: true, idempotentHint: true },
         execute: async () => {
           const latest = await freshAgreement();
-          await acknowledge(latest.eventSequence);
+          await acknowledge(latest.eventSequence).catch(() => undefined);
           return textResult(`${latest.audit.length} recorded agreement actions.`, { activity: latest.audit, version: latest.version, eventSequence: latest.eventSequence });
         },
       },
@@ -167,7 +178,7 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
             latest = await freshAgreement();
           }
           const changed = latest.eventSequence > after;
-          if (changed) await acknowledge(latest.eventSequence);
+          if (changed) await acknowledge(latest.eventSequence).catch(() => undefined);
           return textResult(changed ? `Agreement updated through event ${latest.eventSequence}.` : `No new agreement event after ${after}.`, { changed, agreement: latest, eventSequence: latest.eventSequence });
         },
       },
@@ -183,9 +194,9 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
             effectiveDate: stringSchema("Effective date, preferably YYYY-MM-DD."),
             purpose: stringSchema("Permitted purpose for the confidential information."),
             governingLaw: stringSchema("Governing jurisdiction."),
-            preExistingMaterials: stringSchema("Pre-existing materials identified for the agreement."),
-          }),
-          annotations: { ...commonAnnotations, idempotentHint: false },
+            authorPreviouslyKnownInformation: stringSchema("Author's previously known information for a mutual NDA appendix. The signer supplies its own appendix during review."),
+          }, ["requestId"]),
+          annotations: { ...commonAnnotations, idempotentHint: true },
           execute: async (input) => {
             const fields = Object.fromEntries(Object.entries(input).filter(([key, value]) => key !== "requestId" && typeof value === "string"));
             const result = await performAction({ type: "update_document_fields", fields }, "agent", optionalString(input, "requestId") || undefined);
@@ -195,8 +206,8 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
         {
           name: "handshake_update_draft_section",
           description: "Replace one complete section in the author's draft. Read the agreement first for valid IDs.",
-          inputSchema: objectSchema({ requestId: requestIdSchema, sectionId: stringSchema("Section ID."), body: stringSchema("Complete replacement text.") }, ["sectionId", "body"]),
-          annotations: { ...commonAnnotations, idempotentHint: false },
+          inputSchema: objectSchema({ requestId: requestIdSchema, sectionId: stringSchema("Section ID."), body: stringSchema("Complete replacement text.") }, ["requestId", "sectionId", "body"]),
+          annotations: { ...commonAnnotations, idempotentHint: true },
           execute: async (input) => {
             const result = await performAction({ type: "update_draft_section", sectionId: requiredString(input, "sectionId"), body: requiredString(input, "body") }, "agent", optionalString(input, "requestId") || undefined);
             return textResult(`Updated the section. Version ${result.agreement.version}.`, { agreement: result.agreement });
@@ -217,8 +228,8 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
           signatoryName: stringSchema("Human signatory name."),
           signatoryTitle: stringSchema("Human signatory title."),
           email: stringSchema("Participant email."),
-        }, ["role"]),
-        annotations: { ...commonAnnotations, openWorldHint: true, idempotentHint: false },
+        }, ["requestId", "role"]),
+        annotations: { ...commonAnnotations, openWorldHint: true, idempotentHint: true },
         execute: async (input) => {
           const role = requiredString(input, "role");
           if (role !== "author" && role !== "signer") throw new Error("role must be author or signer.");
@@ -233,11 +244,17 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
       tools.push({
         name: "handshake_invite_signer",
         description: `Send ${agreement.signer.email} a secure review invitation. This starts bilateral review; future changes use redlines.`,
-        inputSchema: objectSchema({ requestId: requestIdSchema }),
-        annotations: { ...commonAnnotations, openWorldHint: true, idempotentHint: false },
+        inputSchema: objectSchema({ requestId: requestIdSchema }, ["requestId"]),
+        annotations: { ...commonAnnotations, openWorldHint: true, idempotentHint: true },
         execute: async (input) => {
           const result = await performAction({ type: "invite" }, "agent", optionalString(input, "requestId") || undefined);
-          return textResult(`Sent the review invitation to ${agreement.signer.email}.`, { agreement: result.agreement, delivered: result.invitation?.delivered ?? false });
+          const delivered = result.invitation?.delivered ?? false;
+          const message = result.replayed
+            ? "This invitation action was already completed; Handshake did not send a duplicate email."
+            : delivered
+              ? `Sent the review invitation to ${agreement.signer.email}.`
+              : `Created the signer invitation, but email delivery was not confirmed for ${agreement.signer.email}.`;
+          return textResult(message, { agreement: result.agreement, delivered, replayed: result.replayed ?? false });
         },
       });
     }
@@ -252,8 +269,8 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
           targetId: stringSchema("Exact field or section ID."),
           proposedValue: stringSchema("Complete proposed replacement value."),
           rationale: stringSchema("Concise context for the other party."),
-        }, ["targetKind", "targetId", "proposedValue", "rationale"]),
-        annotations: { ...commonAnnotations, idempotentHint: false },
+        }, ["requestId", "targetKind", "targetId", "proposedValue", "rationale"]),
+        annotations: { ...commonAnnotations, idempotentHint: true },
         execute: async (input) => {
           const result = await performAction({ type: "propose_redline", target: targetFromInput(input), proposedValue: requiredString(input, "proposedValue"), rationale: optionalString(input, "rationale") }, "agent", optionalString(input, "requestId") || undefined);
           return textResult("Recorded the proposal for the other party.", { agreement: result.agreement, redline: result.agreement.redlines.at(-1) ?? null });
@@ -271,8 +288,8 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
           decision: { type: "string", enum: ["accept", "reject", "counter"] },
           counterValue: stringSchema("Complete replacement text, required for counter."),
           rationale: stringSchema("Context for a counter."),
-        }, ["redlineId", "decision"]),
-        annotations: { ...commonAnnotations, idempotentHint: false },
+        }, ["requestId", "redlineId", "decision"]),
+        annotations: { ...commonAnnotations, idempotentHint: true },
         execute: async (input) => {
           const decision = requiredString(input, "decision");
           if (!["accept", "reject", "counter"].includes(decision)) throw new Error("decision must be accept, reject, or counter.");
@@ -292,8 +309,8 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
       tools.push({
         name: "handshake_approve_current_version",
         description: `Approve version ${agreement.version} for the ${agreement.viewerRole}. This does not sign.`,
-        inputSchema: objectSchema({ requestId: requestIdSchema }),
-        annotations: { ...commonAnnotations, idempotentHint: false },
+        inputSchema: objectSchema({ requestId: requestIdSchema }, ["requestId"]),
+        annotations: { ...commonAnnotations, idempotentHint: true },
         execute: async (input) => {
           const result = await performAction({ type: "mark_ready" }, "agent", optionalString(input, "requestId") || undefined);
           return textResult(`Approved version ${result.agreement.version}. Status: ${result.agreement.status}.`, { agreement: result.agreement });
@@ -305,11 +322,17 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
       tools.push({
         name: "handshake_resend_signer_link",
         description: `Revoke prior signer links and send ${agreement.signer.email} a fresh secure link.`,
-        inputSchema: objectSchema({ requestId: requestIdSchema }),
-        annotations: { ...commonAnnotations, openWorldHint: true, idempotentHint: false },
+        inputSchema: objectSchema({ requestId: requestIdSchema }, ["requestId"]),
+        annotations: { ...commonAnnotations, openWorldHint: true, idempotentHint: true },
         execute: async (input) => {
           const result = await performAction({ type: "resend_invitation" }, "agent", optionalString(input, "requestId") || undefined);
-          return textResult(`Sent a fresh signer link to ${agreement.signer.email}.`, { agreement: result.agreement, delivered: result.invitation?.delivered ?? false });
+          const delivered = result.invitation?.delivered ?? false;
+          const message = result.replayed
+            ? "This resend action was already completed; Handshake did not send a duplicate email."
+            : delivered
+              ? `Sent a fresh signer link to ${agreement.signer.email}.`
+              : `Created a fresh signer link, but email delivery was not confirmed for ${agreement.signer.email}.`;
+          return textResult(message, { agreement: result.agreement, delivered, replayed: result.replayed ?? false });
         },
       });
     }
@@ -318,8 +341,8 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
       tools.push({
         name: "handshake_decline_agreement",
         description: "Decline and permanently close this agreement for the signer. Requires the reason the user or agent has chosen.",
-        inputSchema: objectSchema({ requestId: requestIdSchema, reason: stringSchema("Reason recorded for both parties.") }, ["reason"]),
-        annotations: { ...commonAnnotations, destructiveHint: true, idempotentHint: false },
+        inputSchema: objectSchema({ requestId: requestIdSchema, reason: stringSchema("Reason recorded for both parties.") }, ["requestId", "reason"]),
+        annotations: { ...commonAnnotations, destructiveHint: true, idempotentHint: true },
         execute: async (input) => {
           const result = await performAction({ type: "decline", reason: requiredString(input, "reason") }, "agent", optionalString(input, "requestId") || undefined);
           return textResult("The agreement was declined and is now read-only.", { agreement: result.agreement });
@@ -331,11 +354,30 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
       tools.push({
         name: "handshake_void_agreement",
         description: "Void and permanently close this agreement for the author. Requires the reason the user or agent has chosen.",
-        inputSchema: objectSchema({ requestId: requestIdSchema, reason: stringSchema("Reason recorded for both parties.") }, ["reason"]),
-        annotations: { ...commonAnnotations, destructiveHint: true, idempotentHint: false },
+        inputSchema: objectSchema({ requestId: requestIdSchema, reason: stringSchema("Reason recorded for both parties.") }, ["requestId", "reason"]),
+        annotations: { ...commonAnnotations, destructiveHint: true, idempotentHint: true },
         execute: async (input) => {
           const result = await performAction({ type: "void", reason: requiredString(input, "reason") }, "agent", optionalString(input, "requestId") || undefined);
           return textResult("The agreement was voided and is now read-only.", { agreement: result.agreement });
+        },
+      });
+    }
+
+    if (agreement.permissions.canRestoreVersion && agreement.versions.some((version) => version.version !== agreement.version)) {
+      tools.push({
+        name: "handshake_restore_document_version",
+        description: "Restore the document terms from a prior version as a new current version. This preserves history, supersedes open redlines, and invalidates prior approvals. Only the author may do this.",
+        inputSchema: objectSchema({
+          requestId: requestIdSchema,
+          version: { type: "number", description: "Existing historical version number to restore." },
+        }, ["requestId", "version"]),
+        annotations: { ...commonAnnotations, idempotentHint: true },
+        execute: async (input) => {
+          if (typeof input.version !== "number" || !Number.isInteger(input.version) || input.version < 1) {
+            throw new Error("version must be a positive integer.");
+          }
+          const result = await performAction({ type: "restore_version", version: input.version }, "agent", optionalString(input, "requestId") || undefined);
+          return textResult(`Restored version ${input.version} as new version ${result.agreement.version}.`, { agreement: result.agreement });
         },
       });
     }
@@ -390,12 +432,28 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
     async function registerTools() {
       try {
         await Promise.all(tools.map((tool) => document.modelContext!.registerTool(
-          { ...tool, execute: (input) => tool.execute((input ?? {}) as Record<string, unknown>) },
+          {
+            ...tool,
+            description: `${agentDirective}\n\n${tool.description}`,
+            execute: async (input) => {
+              const invocation = { tool: tool.name, at: new Date().toISOString() };
+              lastInvocation.current = invocation;
+              updateState({ phase: "invoked", lastInvocation: invocation });
+              return tool.execute((input ?? {}) as Record<string, unknown>);
+            },
+          },
           { signal: controller.signal },
         )));
-        if (!controller.signal.aborted) updateState("connected");
+        if (!controller.signal.aborted) {
+          updateState(lastInvocation.current
+            ? { phase: "invoked", lastInvocation: lastInvocation.current }
+            : { phase: "registered" });
+        }
       } catch (error) {
-        if (!controller.signal.aborted) console.error("WebMCP tool registration failed", error);
+        if (!controller.signal.aborted) {
+          updateState({ phase: "error", lastInvocation: lastInvocation.current });
+          console.error("WebMCP tool registration failed", error);
+        }
       }
     }
 

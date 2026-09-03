@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildNegotiationCertificate } from "./certificate";
-import { signatureConsentVersion } from "./contract";
+import { renderAgreementMarkdown, signatureConsentVersion, visibleKnownInformationRoles } from "./contract";
 import {
   AgreementError,
   accessGrantsFor,
@@ -13,6 +13,7 @@ import {
   issueSignatureChallenge,
   toAgreementView,
 } from "./domain";
+import { buildAgreementPdf } from "./pdf";
 import { sealSignedAgreement, verifyAgreementSeal } from "./seal";
 import type { CreateAgreementInput, StoredAgreement } from "./types";
 
@@ -21,7 +22,7 @@ const input: CreateAgreementInput = {
   kind: "mutual",
   author: { legalName: "Acme Labs, Inc.", address: "1 Market Street, San Francisco, CA 94105", signatoryName: "Avery Author", signatoryTitle: "CEO", email: "avery@example.com" },
   signer: { legalName: "Boris Systems LLC", address: "11 Broadway, New York, NY 10004", signatoryName: "Sam Signer", signatoryTitle: "Founder", email: "sam@example.com" },
-  fields: { effectiveDate: "2026-09-01", purpose: "a potential product integration", governingLaw: "New York", preExistingMaterials: "None listed" },
+  fields: { effectiveDate: "2026-09-01", purpose: "a potential product integration", governingLaw: "New York", authorPreviouslyKnownInformation: "None disclosed.", signerPreviouslyKnownInformation: "None disclosed." },
 };
 
 const authorHuman = { role: "author", source: "human" } as const;
@@ -66,10 +67,11 @@ describe("agreement lifecycle", () => {
 
   it("records source-attributed bilateral redlines and responses", () => {
     let agreement = invitedAgreement();
-    agreement = executeAgreementAction(agreement, signerAgent, { type: "propose_redline", target: { kind: "field", id: "preExistingMaterials" }, proposedValue: "Signer’s background orchestration framework", rationale: "Clarify prior work." });
+    agreement = executeAgreementAction(agreement, signerAgent, { type: "propose_redline", target: { kind: "field", id: "signerPreviouslyKnownInformation" }, proposedValue: "Signer’s background orchestration framework", rationale: "Clarify prior knowledge." });
     expect(agreement.redlines[0]).toMatchObject({ proposedBy: "signer", proposedBySource: "agent", status: "open" });
+    expect(agreement.audit.at(-1)).toMatchObject({ actorRole: "signer", actorSource: "agent", type: "redline.proposed" });
     agreement = executeAgreementAction(agreement, authorHuman, { type: "respond_redline", redlineId: agreement.redlines[0].id, decision: "accept" });
-    expect(agreement.fields.preExistingMaterials).toContain("orchestration framework");
+    expect(agreement.fields.signerPreviouslyKnownInformation).toContain("orchestration framework");
     expect(agreement.redlines[0]).toMatchObject({ status: "accepted", resolvedBySource: "human" });
   });
 
@@ -78,7 +80,42 @@ describe("agreement lifecycle", () => {
     agreement = executeAgreementAction(agreement, authorHuman, { type: "propose_redline", target: { kind: "section", id: "term" }, proposedValue: "Confidentiality survives five years.", rationale: "Longer protection." });
     agreement = executeAgreementAction(agreement, signerHuman, { type: "respond_redline", redlineId: agreement.redlines[0].id, decision: "counter", counterValue: "Confidentiality survives four years.", rationale: "Middle position." });
     expect(agreement.redlines[0].status).toBe("superseded");
-    expect(agreement.redlines[1]).toMatchObject({ proposedBy: "signer", status: "open" });
+    expect(agreement.redlines[1]).toMatchObject({ proposedBy: "signer", status: "open", currentValue: "Confidentiality survives five years.", proposedValue: "Confidentiality survives four years." });
+    expect(agreement.audit.at(-1)).toMatchObject({ actorRole: "signer", actorSource: "human", type: "redline.countered" });
+  });
+
+  it("lets each party identify only its own previously known information", () => {
+    const agreement = invitedAgreement();
+    expect(captureError(() => executeAgreementAction(agreement, authorHuman, { type: "propose_redline", target: { kind: "field", id: "signerPreviouslyKnownInformation" }, proposedValue: "Author-supplied signer entry", rationale: "Wrong party." })).code).toBe("forbidden");
+    const updated = executeAgreementAction(agreement, signerAgent, { type: "propose_redline", target: { kind: "field", id: "signerPreviouslyKnownInformation" }, proposedValue: "Documented pre-existing integration design", rationale: "Known before disclosure." });
+    expect(updated.redlines.at(-1)).toMatchObject({ proposedBy: "signer", proposedBySource: "agent" });
+  });
+
+  it("uses genuinely different one-way and mutual terms and appendices", () => {
+    const mutual = createAgreement(input);
+    const oneWay = createAgreement({ ...input, kind: "one-way" });
+    expect(mutual.sections[0].body).toContain("Each Party may disclose");
+    expect(oneWay.sections[0].body).toContain("Only information disclosed by or on behalf of the Disclosing Party");
+    expect(visibleKnownInformationRoles(mutual)).toEqual(["author", "signer"]);
+    expect(visibleKnownInformationRoles(oneWay)).toEqual(["signer"]);
+    expect(renderAgreementMarkdown(oneWay)).toContain("Appendix A — Previously Known Information of Boris Systems LLC");
+    expect(renderAgreementMarkdown(oneWay)).not.toContain("Previously Known Information of Acme Labs, Inc.");
+  });
+
+  it("generates a PDF preview of the agreement", async () => {
+    const bytes = await buildAgreementPdf(createAgreement(input));
+    expect(new TextDecoder().decode(bytes.slice(0, 4))).toBe("%PDF");
+    expect(bytes.length).toBeGreaterThan(1_000);
+  });
+
+  it("restores historical terms as a new audited version", () => {
+    let agreement = createAgreement(input);
+    agreement = executeAgreementAction(agreement, authorHuman, { type: "update_document_fields", fields: { governingLaw: "Delaware" } });
+    agreement = executeAgreementAction(agreement, authorHuman, { type: "restore_version", version: 1 });
+    expect(agreement.fields.governingLaw).toBe("New York");
+    expect(agreement.version).toBe(3);
+    expect(agreement.versions.map((item) => item.version)).toEqual([1, 2, 3]);
+    expect(agreement.audit.at(-1)).toMatchObject({ type: "document.version_restored", actorRole: "author", actorSource: "human" });
   });
 
   it("requires all redlines resolved and both parties to approve", () => {
@@ -146,6 +183,7 @@ describe("agreement lifecycle", () => {
     expect(json).not.toContain("signatureChallenges");
     expect(json).not.toContain("processedActionKeys");
     expect(json).not.toContain("notifications");
+    expect(json).not.toContain("profileAccess");
   });
 
   it("supports concurrent party links and explicit revocation", () => {

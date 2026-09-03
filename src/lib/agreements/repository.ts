@@ -26,6 +26,7 @@ export async function createStoredAgreement(input: CreateAgreementInput, ownerUs
   const { token: authorToken, grant } = createAccessGrant();
   const agreement = createAgreement(input, grant, source);
   agreement.ownerUserId = ownerUserId;
+  if (ownerUserId) agreement.profileAccess.author = ownerUserId;
   const supabase = createSupabaseAdminClient();
   if (supabase) {
     const { error } = await supabase.from("agreements").insert({
@@ -66,30 +67,43 @@ export async function getAgreementByAccess(id: string, token: string): Promise<A
 export async function listAgreementsByOwner(ownerUserId: string) {
   const supabase = createSupabaseAdminClient();
   if (supabase) {
-    const { data, error } = await supabase
-      .from("agreements")
-      .select("data")
-      .eq("owner_user_id", ownerUserId)
-      .order("updated_at", { ascending: false });
-    if (error) throw new AgreementError("Your agreements could not be loaded.", "persistence_error", 500);
-    return (data ?? []).map((row) => normalizeAgreement(row.data as StoredAgreement));
+    const queries = await Promise.all([
+      supabase.from("agreements").select("data").eq("owner_user_id", ownerUserId),
+      supabase.from("agreements").select("data").contains("data", { profileAccess: { author: ownerUserId } }),
+      supabase.from("agreements").select("data").contains("data", { profileAccess: { signer: ownerUserId } }),
+    ]);
+    if (queries.some(({ error }) => error)) {
+      throw new AgreementError("Your agreements could not be loaded.", "persistence_error", 500);
+    }
+    const unique = new Map<string, StoredAgreement>();
+    for (const { data } of queries) {
+      for (const row of data ?? []) {
+        const agreement = normalizeAgreement(row.data as StoredAgreement);
+        unique.set(agreement.id, agreement);
+      }
+    }
+    return [...unique.values()].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
   }
   return [...store.values()]
-    .filter((agreement) => agreement.ownerUserId === ownerUserId)
+    .map(normalizeAgreement)
+    .filter((agreement) => agreement.ownerUserId === ownerUserId || Object.values(agreement.profileAccess).includes(ownerUserId))
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
     .map((agreement) => structuredClone(agreement));
 }
 
-export async function claimAgreementForUser(
+export async function saveAgreementToProfile(
   current: StoredAgreement,
   user: { id: string; email?: string },
+  role: PartyRole,
 ) {
-  if (current.ownerUserId) return current;
-  if (!user.email || user.email.toLowerCase() !== current.author.email.toLowerCase()) return current;
-  const agreement = structuredClone(current);
-  agreement.ownerUserId = user.id;
-  agreement.updatedAt = new Date().toISOString();
-  return saveAgreement(agreement);
+  const normalized = normalizeAgreement(current);
+  if (normalized.profileAccess[role]) return normalized;
+  if (!user.email || user.email.toLowerCase() !== normalized[role].email.toLowerCase()) return normalized;
+  const agreement = structuredClone(normalized);
+  agreement.profileAccess[role] = user.id;
+  if (role === "author") agreement.ownerUserId = user.id;
+  agreement.updatedAt = new Date(Math.max(Date.now(), Date.parse(current.updatedAt) + 1)).toISOString();
+  return saveAgreement(agreement, { expectedUpdatedAt: current.updatedAt });
 }
 
 export async function saveAgreement(agreement: StoredAgreement, options: { expectedUpdatedAt?: string } = {}) {

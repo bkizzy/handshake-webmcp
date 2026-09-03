@@ -33,7 +33,7 @@ function otherRole(role: PartyRole): PartyRole {
 }
 
 function actionRecipient(actionType: string, actorRole: PartyRole) {
-  if (["update_participant", "propose_redline", "respond_redline", "mark_ready", "sign", "decline", "void"].includes(actionType)) {
+  if (["update_participant", "restore_version", "propose_redline", "respond_redline", "mark_ready", "sign", "decline", "void"].includes(actionType)) {
     return otherRole(actorRole);
   }
   return null;

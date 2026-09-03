@@ -17,14 +17,22 @@ export const createAgreementSchema = z.object({
     effectiveDate: z.string().trim().min(1),
     purpose: z.string().trim().min(1),
     governingLaw: z.string().trim().min(1),
-    preExistingMaterials: z.string().trim(),
-  }),
+    authorPreviouslyKnownInformation: z.string().trim().optional(),
+    signerPreviouslyKnownInformation: z.string().trim().optional(),
+    preExistingMaterials: z.string().trim().optional(),
+  }).transform((fields) => ({
+    effectiveDate: fields.effectiveDate,
+    purpose: fields.purpose,
+    governingLaw: fields.governingLaw,
+    authorPreviouslyKnownInformation: fields.authorPreviouslyKnownInformation || "None disclosed.",
+    signerPreviouslyKnownInformation: fields.signerPreviouslyKnownInformation || fields.preExistingMaterials || "None disclosed.",
+  })),
 });
 
 const redlineTargetSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("field"),
-    id: z.enum(["effectiveDate", "purpose", "governingLaw", "preExistingMaterials"]),
+    id: z.enum(["effectiveDate", "purpose", "governingLaw", "authorPreviouslyKnownInformation", "signerPreviouslyKnownInformation"]),
   }),
   z.object({ kind: z.literal("section"), id: z.string().trim().min(1) }),
 ]);
@@ -37,7 +45,8 @@ const agreementActionSchema = z.discriminatedUnion("type", [
         effectiveDate: z.string().optional(),
         purpose: z.string().optional(),
         governingLaw: z.string().optional(),
-        preExistingMaterials: z.string().optional(),
+        authorPreviouslyKnownInformation: z.string().optional(),
+        signerPreviouslyKnownInformation: z.string().optional(),
       })
       .refine((value) => Object.keys(value).length > 0),
   }),
@@ -46,6 +55,7 @@ const agreementActionSchema = z.discriminatedUnion("type", [
     sectionId: z.string().trim().min(1),
     body: z.string().trim().min(1),
   }),
+  z.object({ type: z.literal("restore_version"), version: z.number().int().positive() }),
   z.object({ type: z.literal("invite") }),
   z.object({
     type: z.literal("update_participant"),

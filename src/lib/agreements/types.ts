@@ -28,7 +28,8 @@ export type AgreementFields = {
   effectiveDate: string;
   purpose: string;
   governingLaw: string;
-  preExistingMaterials: string;
+  authorPreviouslyKnownInformation: string;
+  signerPreviouslyKnownInformation: string;
 };
 
 export type AgreementSection = {
@@ -74,6 +75,7 @@ export type Signature = {
 export type AuditEventType =
   | "agreement.created"
   | "document.updated"
+  | "document.version_restored"
   | "participant.corrected"
   | "participant.invited"
   | "participant.reinvited"
@@ -186,6 +188,7 @@ export type NotificationState = {
 export type StoredAgreement = Agreement & {
   access: Partial<Record<PartyRole, AccessGrant | AccessGrant[]>>;
   ownerUserId?: string;
+  profileAccess: Partial<Record<PartyRole, string>>;
   processedActionKeys: string[];
   signatureChallenges: Partial<Record<PartyRole, SignatureChallenge>>;
   notifications: Record<PartyRole, NotificationState>;
@@ -209,6 +212,7 @@ export type AgreementView = Agreement & {
     canDecline: boolean;
     canVoid: boolean;
     canResendInvitation: boolean;
+    canRestoreVersion: boolean;
     canRetrieveExecutedPackage: boolean;
   };
 };
@@ -224,6 +228,7 @@ export type CreateAgreementInput = {
 export type AgreementAction =
   | { type: "update_document_fields"; fields: Partial<AgreementFields> }
   | { type: "update_draft_section"; sectionId: string; body: string }
+  | { type: "restore_version"; version: number }
   | { type: "update_participant"; role: PartyRole; participant: Partial<Omit<Party, "role">> }
   | { type: "invite" }
   | { type: "propose_redline"; target: RedlineTarget; proposedValue: string; rationale: string }

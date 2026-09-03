@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getAgreementByAccess, claimAgreementForUser } from "@/src/lib/agreements/repository";
+import { getAgreementByAccess, saveAgreementToProfile } from "@/src/lib/agreements/repository";
 import { apiError } from "@/src/lib/http";
 import { getAuthenticatedUser } from "@/src/lib/supabase/server";
 
@@ -13,8 +13,8 @@ export async function GET(request: Request, context: RouteContext) {
     let agreement = access.agreement;
     const role = access.role;
     const user = await getAuthenticatedUser();
-    if (role === "author" && user && !agreement.ownerUserId) {
-      agreement = await claimAgreementForUser(agreement, { id: user.id, email: user.email });
+    if (user && !agreement.profileAccess[role]) {
+      agreement = await saveAgreementToProfile(agreement, { id: user.id, email: user.email }, role);
     }
 
     const destination = new URL(`/deal/${agreement.id}`, request.url);

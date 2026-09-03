@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomInt, randomUUID } from "node:crypto";
 
-import { reviewBaseline, signatureConsentVersion, templateForKind } from "./contract";
+import { knownInformationField, reviewBaseline, signatureConsentVersion, templateForKind } from "./contract";
 import { createNdaSections } from "./template";
 import type {
   AccessGrant,
@@ -86,6 +86,10 @@ export function latestEventSequence(agreement: Pick<Agreement, "audit">) {
 
 export function normalizeAgreement(current: StoredAgreement): StoredAgreement {
   const agreement = structuredClone(current);
+  const legacyFields = agreement.fields as AgreementFields & { preExistingMaterials?: string };
+  legacyFields.authorPreviouslyKnownInformation ??= "None disclosed.";
+  legacyFields.signerPreviouslyKnownInformation ??= legacyFields.preExistingMaterials ?? "None disclosed.";
+  delete legacyFields.preExistingMaterials;
   agreement.template ??= templateForKind(agreement.kind);
   agreement.signatureChallenges ??= {};
   agreement.notifications ??= {
@@ -96,6 +100,8 @@ export function normalizeAgreement(current: StoredAgreement): StoredAgreement {
   agreement.notifications.signer ??= defaultNotificationState();
   agreement.processedActionKeys ??= [];
   agreement.access ??= {};
+  agreement.profileAccess ??= agreement.ownerUserId ? { author: agreement.ownerUserId } : {};
+  if (agreement.ownerUserId) agreement.profileAccess.author ??= agreement.ownerUserId;
 
   agreement.audit = (agreement.audit ?? []).map((event, index) => ({
     ...event,
@@ -115,11 +121,22 @@ export function normalizeAgreement(current: StoredAgreement): StoredAgreement {
     signature.verificationMethod ??= "legacy_capability";
     signature.consentVersion ??= "legacy-consent-v0";
   }
-  agreement.versions = (agreement.versions ?? []).map((version) => ({
-    ...version,
-    author: version.author ?? structuredClone(agreement.author),
-    signer: version.signer ?? structuredClone(agreement.signer),
-  }));
+  agreement.versions = (agreement.versions ?? []).map((version) => {
+    const fields = version.fields as AgreementFields & { preExistingMaterials?: string };
+    return {
+      ...version,
+      fields: {
+        effectiveDate: fields.effectiveDate,
+        purpose: fields.purpose,
+        governingLaw: fields.governingLaw,
+        authorPreviouslyKnownInformation: fields.authorPreviouslyKnownInformation ?? "None disclosed.",
+        signerPreviouslyKnownInformation:
+          fields.signerPreviouslyKnownInformation ?? fields.preExistingMaterials ?? "None disclosed.",
+      },
+      author: version.author ?? structuredClone(agreement.author),
+      signer: version.signer ?? structuredClone(agreement.signer),
+    };
+  });
   if (!agreement.versions.length) recordVersion(agreement);
   return agreement;
 }
@@ -206,9 +223,10 @@ function createRedline(
   target: RedlineTarget,
   proposedValue: string,
   rationale: string,
+  baseValue?: string,
 ): Redline {
   assert(proposedValue.trim(), "A proposed value is required.", "proposal_required");
-  const currentValue = getTargetValue(agreement, target);
+  const currentValue = baseValue ?? getTargetValue(agreement, target);
   assert(currentValue !== proposedValue, "The proposal must change the document.", "no_change");
   assert(
     !agreement.redlines.some((item) => item.status === "open" && item.target.kind === target.kind && item.target.id === target.id),
@@ -260,6 +278,7 @@ export function createAgreement(
     versions: [],
     audit: [],
     access: { author: access },
+    profileAccess: {},
     processedActionKeys: [],
     signatureChallenges: {},
     notifications: {
@@ -388,9 +407,42 @@ export function executeAgreementAction(
       assert(agreement.status === "draft", "Direct editing is available only in draft.", "not_draft", 409);
       const entries = Object.entries(action.fields) as [keyof AgreementFields, string][];
       assert(entries.length > 0, "At least one field is required.", "empty_update");
+      assert(
+        !entries.some(([key, value]) => key === knownInformationField("signer") && value !== agreement.fields[key]),
+        "The signer supplies its own previously known information during review.",
+        "forbidden",
+        403,
+      );
+      assert(
+        agreement.kind === "mutual"
+          || !entries.some(([key, value]) => key === knownInformationField("author") && value !== agreement.fields[key]),
+        "The disclosing party does not have a previously known information appendix in a one-way NDA.",
+        "invalid_field",
+      );
       for (const [key, value] of entries) agreement.fields[key] = value;
       touchDocument(agreement);
       audit(agreement, context, "document.updated", "Updated document details", { fields: entries.map(([key]) => key) });
+      return agreement;
+    }
+    case "restore_version": {
+      assert(context.role === "author", "Only the author can restore a document version.", "forbidden", 403);
+      assert(agreement.status === "draft" || agreement.status === "review" || agreement.status === "ready", "This version cannot be restored now.", "restore_unavailable", 409);
+      const historical = agreement.versions.find((item) => item.version === action.version);
+      assert(historical, "The requested version does not exist.", "version_not_found", 404);
+      assert(historical.version !== agreement.version, "That version is already current.", "version_current", 409);
+      for (const redline of agreement.redlines.filter((item) => item.status === "open")) {
+        redline.status = "superseded";
+        redline.resolvedAt = now();
+        redline.resolvedBy = context.role;
+        redline.resolvedBySource = context.source;
+      }
+      agreement.fields = structuredClone(historical.fields);
+      agreement.sections = structuredClone(historical.sections);
+      touchDocument(agreement);
+      audit(agreement, context, "document.version_restored", `Restored document terms from version ${historical.version}`, {
+        restoredVersion: historical.version,
+        resultingVersion: agreement.version,
+      });
       return agreement;
     }
     case "update_draft_section": {
@@ -434,6 +486,15 @@ export function executeAgreementAction(
         "not_in_review",
         409,
       );
+      if (action.target.kind === "field") {
+        if (action.target.id === knownInformationField("author")) {
+          assert(agreement.kind === "mutual", "This appendix is available only in a mutual NDA.", "invalid_field");
+          assert(context.role === "author", "Only the author may identify the author’s previously known information.", "forbidden", 403);
+        }
+        if (action.target.id === knownInformationField("signer")) {
+          assert(context.role === "signer", "Only the signer may identify the signer’s previously known information.", "forbidden", 403);
+        }
+      }
       const redline = createRedline(agreement, context, action.target, action.proposedValue, action.rationale);
       audit(agreement, context, "redline.proposed", `Proposed a change to ${redline.target.id}`, {
         redlineId: redline.id,
@@ -469,7 +530,7 @@ export function executeAgreementAction(
       const counterValue = action.counterValue;
       assert(typeof counterValue === "string" && counterValue.trim(), "Counterproposal text is required.", "counter_required");
       redline.status = "superseded";
-      const counter = createRedline(agreement, context, redline.target, counterValue, action.rationale ?? "Counterproposal");
+      const counter = createRedline(agreement, context, redline.target, counterValue, action.rationale ?? "Counterproposal", redline.proposedValue);
       redline.supersededBy = counter.id;
       audit(agreement, context, "redline.countered", `Countered a change to ${redline.target.id}`, {
         redlineId: redline.id,
@@ -559,6 +620,7 @@ export function toAgreementView(current: StoredAgreement, viewerRole: PartyRole)
   const cloned = structuredClone(agreement);
   delete (cloned as Partial<StoredAgreement>).access;
   delete cloned.ownerUserId;
+  delete (cloned as Partial<StoredAgreement>).profileAccess;
   delete (cloned as Partial<StoredAgreement>).processedActionKeys;
   delete (cloned as Partial<StoredAgreement>).signatureChallenges;
   delete (cloned as Partial<StoredAgreement>).notifications;
@@ -583,6 +645,7 @@ export function toAgreementView(current: StoredAgreement, viewerRole: PartyRole)
       canDecline: viewerRole === "signer" && !closed,
       canVoid: viewerRole === "author" && !closed,
       canResendInvitation: viewerRole === "author" && agreement.status !== "draft" && !closed,
+      canRestoreVersion: viewerRole === "author" && !closed,
       canRetrieveExecutedPackage: agreement.status === "signed" && Boolean(agreement.execution),
     },
   };

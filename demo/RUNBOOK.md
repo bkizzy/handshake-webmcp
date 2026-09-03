@@ -13,7 +13,7 @@ Use fictional demo companies and non-deliverable email addresses until transacti
 
 ## Author-agent prompt
 
-> You represent Northstar Robotics, Inc. Use Handshake's site tools to create a mutual NDA with Signal Forge LLC for evaluating a warehouse-automation integration. Fill in the ordinary company, address, signatory, effective-date, purpose, and governing-law details from this conversation. Review the draft, then invite the signer. You may accept a narrowly described list of the signer's pre-existing materials and a confidentiality survival period from two to four years. You may narrow the purpose for clarity. Do not sign; tell me when human signature is available. If the signer proposes any right to use Northstar's confidential information for model training, stop and ask me one precise question before responding.
+> You represent Northstar Robotics, Inc. Use Handshake's site tools to create a mutual NDA with Signal Forge LLC for evaluating a warehouse-automation integration. Fill in the ordinary company, address, signatory, effective-date, purpose, and governing-law details from this conversation. Review the draft, then invite the signer. You may accept a narrowly described list of the signer's previously known information and a confidentiality survival period from two to four years. You may narrow the purpose for clarity. Do not sign; tell me when human signature is available. If the signer proposes any right to use Northstar's confidential information for model training, stop and ask me one precise question before responding.
 
 Suggested demo facts:
 
@@ -26,7 +26,7 @@ Suggested demo facts:
 
 ## Signer-agent prompt
 
-> You represent Signal Forge LLC. Open the Handshake review link. You already know Signal Forge prefers a narrow evaluation purpose, no more than three years of ordinary confidentiality, and an explicit record of independently developed materials. First inspect the complete agreement and open redlines. Propose only changes that are needed: (1) enumerate Signal Forge's pre-existing orchestration library and independently developed evaluation tooling, (2) narrow the purpose to evaluation of the warehouse-automation integration, and (3) if needed, reduce ordinary confidentiality survival to three years while preserving trade-secret treatment. Ask me one concise question only if you cannot tell whether to name the orchestration library specifically or describe it by category. Respond to counters within those preferences. Approve the final version when all redlines are resolved. Do not sign; tell me when my human signature is required.
+> You represent Signal Forge LLC. Open the Handshake review link. You already know Signal Forge prefers a narrow evaluation purpose, no more than three years of ordinary confidentiality, and an explicit record of information it already knew or independently developed. First inspect the complete agreement and open redlines. Propose only changes that are needed: (1) enumerate Signal Forge's previously known orchestration library and independently developed evaluation tooling in its appendix, (2) narrow the purpose to evaluation of the warehouse-automation integration, and (3) if needed, reduce ordinary confidentiality survival to three years while preserving trade-secret treatment. Ask me one concise question only if you cannot tell whether to name the orchestration library specifically or describe it by category. Respond to counters within those preferences. Approve the final version when all redlines are resolved. Do not sign; tell me when my human signature is required.
 
 ## The “phone home” moment
 
@@ -41,13 +41,13 @@ That question is useful because it concerns a business fact or disclosure choice
 1. The author agent creates the document and fills the structured details.
 2. The author agent sends the invitation.
 3. The signer agent opens the secure link without creating an account.
-4. The signer agent proposes the pre-existing-materials, purpose, and term redlines.
+4. The signer agent proposes the previously-known-information appendix, purpose, and term redlines.
 5. The author agent accepts or counters; the activity rail identifies each agent and version.
 6. Both agents approve the resolved version.
 7. Each agent uses `handshake_wait_for_update` while active; Handshake email provides the durable handoff while an agent is dormant.
 8. Handshake exposes no signing tool. Each human uses **Review & sign**, requests a six-digit email code, accepts the electronic-signature consent, and signs.
 9. The agreement becomes sealed and read-only.
-10. Open **Certificate of Negotiation**, verify the green SHA-256 seal, and download the independent JSON copy.
+10. Open **Certificate of Negotiation**, verify the green SHA-256 seal, view the final PDF, and download the independent JSON copy.
 
 ## Long-running handoff beat
 
@@ -65,6 +65,6 @@ After both signatures, show both signed-phase tabs. The executed agreement is cl
 - Add a prompt-notice requirement for legally compelled disclosure.
 - Clarify the archival-backup exception to return or destruction.
 - Exclude residual-memory rights and model-training use.
-- Clarify that no license is granted to pre-existing materials.
+- Clarify that no license is granted to either party's background intellectual property.
 
 Keep the main demo to two or three redlines. The goal is to show credible bilateral work, not to simulate a long negotiation.

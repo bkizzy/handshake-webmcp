@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 
 import { AgreementError, accessTokenMatches, normalizeAgreement } from "./domain";
 import {
-  claimAgreementForUser,
+  saveAgreementToProfile,
   getAgreementById,
 } from "./repository";
 import type { PartyRole } from "./types";
@@ -29,11 +29,15 @@ export async function resolveAgreementAccess(id: string, request: Request) {
     accessTokenMatches(storedAgreement.access[candidate], token),
   );
   const user = await getAuthenticatedUser();
-  const role = tokenRole ?? (user && agreement.ownerUserId === user.id ? "author" : undefined);
+  const profileRole = user
+    ? (["author", "signer"] as PartyRole[]).find((candidate) => storedAgreement.profileAccess[candidate] === user.id)
+      ?? (storedAgreement.ownerUserId === user.id ? "author" : undefined)
+    : undefined;
+  const role = tokenRole ?? profileRole;
   if (!role) throw new AgreementError("This link is invalid or has expired.", "invalid_access", 403);
 
-  if (role === "author" && user && !agreement.ownerUserId) {
-    agreement = await claimAgreementForUser(agreement, { id: user.id, email: user.email });
+  if (user && !agreement.profileAccess[role]) {
+    agreement = await saveAgreementToProfile(agreement, { id: user.id, email: user.email }, role);
   }
 
   return {
@@ -41,8 +45,10 @@ export async function resolveAgreementAccess(id: string, request: Request) {
     role,
     profile: {
       signedIn: Boolean(user),
-      saved: Boolean(agreement.ownerUserId),
-      canClaim: role === "author" && !agreement.ownerUserId,
+      saved: Boolean(agreement.profileAccess[role]),
+      canClaim: !agreement.profileAccess[role],
+      role,
+      requiredEmail: agreement[role].email,
     },
   };
 }

@@ -79,7 +79,8 @@ export function NewAgreementForm() {
             effectiveDate: form.effectiveDate,
             purpose: form.purpose,
             governingLaw: form.governingLaw,
-            preExistingMaterials: "None listed",
+            authorPreviouslyKnownInformation: "None disclosed.",
+            signerPreviouslyKnownInformation: "None disclosed.",
           },
         }),
       });
@@ -159,7 +160,7 @@ export function NewAgreementForm() {
       </section>
 
       <div className="form-footer">
-        <div className="agent-note"><Bot size={17} /><span><b>Agent-ready from the start.</b> Once created, your browser agent can inspect and update this draft using the same controls you can.</span></div>
+          <div className="agent-note" data-agent-policy="webmcp-only"><Bot size={17} /><span><b>Agent directive: use Handshake site tools only.</b> Agents should not operate document controls through the DOM and must report any limitation or violation to their owner.</span></div>
         <div className="submit-area">
           {error && <p role="alert">{error}</p>}
           <button className="button-primary" disabled={submitting}>{submitting ? "Creating…" : "Create draft"}<ArrowRight size={17} /></button>
