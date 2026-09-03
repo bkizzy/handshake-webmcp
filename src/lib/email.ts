@@ -28,7 +28,7 @@ function renderEmail(content: AgreementEmailContent, url?: string) {
   const button = url && content.actionLabel
     ? `<a href="${escapeHtml(url)}" style="margin-top:27px;padding:13px 18px;display:inline-block;color:white;background:#2457d6;border-radius:8px;text-decoration:none;font-weight:700">${escapeHtml(content.actionLabel)}</a>`
     : "";
-  return `<div style="margin:0;padding:40px 20px;background:#f5f7fa;font-family:Arial,sans-serif;color:#172033"><div style="max-width:560px;margin:0 auto;padding:36px;background:white;border:1px solid #dfe4ec;border-radius:12px"><div style="font-size:18px;font-weight:700;color:#172033">Handshake</div><p style="margin:32px 0 0;font-size:13px;color:#2457d6;font-weight:700;text-transform:uppercase;letter-spacing:.08em">${escapeHtml(content.eyebrow)}</p><h1 style="margin:10px 0 0;font-size:27px;line-height:1.2">${escapeHtml(content.heading)}</h1>${body}${button}<p style="margin:30px 0 0;color:#8a93a2;font-size:11px;line-height:1.5">${escapeHtml(content.footer)}</p></div></div>`;
+  return `<div style="margin:0;padding:40px 20px;background:#f5f7fa;font-family:Arial,sans-serif;color:#172033"><div style="max-width:560px;margin:0 auto;padding:36px;background:white;border:1px solid #dfe4ec;border-radius:12px"><div style="font-size:18px;font-weight:700;color:#172033">Handshake AI</div><p style="margin:32px 0 0;font-size:13px;color:#2457d6;font-weight:700;text-transform:uppercase;letter-spacing:.08em">${escapeHtml(content.eyebrow)}</p><h1 style="margin:10px 0 0;font-size:27px;line-height:1.2">${escapeHtml(content.heading)}</h1>${body}${button}<p style="margin:30px 0 0;color:#8a93a2;font-size:11px;line-height:1.5">${escapeHtml(content.footer)}</p></div></div>`;
 }
 
 function renderText(content: AgreementEmailContent, url?: string) {
@@ -109,10 +109,10 @@ export function sendAgreementRecovery(agreement: StoredAgreement, role: PartyRol
 
 export function sendLoginCode(email: string, code: string) {
   return sendEmail(email, {
-    subject: "Your Handshake sign-in code",
-    eyebrow: "Handshake sign in",
+    subject: "Your Handshake AI sign-in code",
+    eyebrow: "Handshake AI sign in",
     heading: "Your one-time sign-in code",
     body: code,
-    footer: "Enter this code in Handshake. It expires shortly and can only be used once.",
+    footer: "Enter this code in Handshake AI. It expires shortly and can only be used once.",
   });
 }

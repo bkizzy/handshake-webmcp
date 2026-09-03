@@ -1,6 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 
-import { knownInformationField, visibleKnownInformationRoles } from "./contract";
+import { knownInformationField, knownInformationLines, visibleKnownInformationRoles } from "./contract";
 import type { PartyRole, StoredAgreement } from "./types";
 
 const pageWidth = 612;
@@ -127,7 +127,7 @@ export async function buildAgreementPdf(agreement: StoredAgreement) {
     const party = agreement[role];
     heading(`Appendix ${String.fromCharCode(65 + index)} - Previously Known Information of ${party.legalName}`, 1);
     paragraph(`The following information is identified by ${party.legalName} as information it knew lawfully and without restriction before disclosure under this Agreement:`);
-    paragraph(agreement.fields[knownInformationField(role)]?.trim() || "None disclosed.", { indent: 18 });
+    for (const line of knownInformationLines(agreement.fields[knownInformationField(role)])) paragraph(`- ${line}`, { indent: 18 });
   }
 
   if (agreement.status === "signed" && agreement.execution?.sealHash) {
@@ -141,7 +141,7 @@ export async function buildAgreementPdf(agreement: StoredAgreement) {
 
   pdf.setTitle(agreement.title);
   pdf.setSubject(agreement.template.name);
-  pdf.setCreator("Handshake");
-  pdf.setProducer("Handshake");
+  pdf.setCreator("Handshake AI");
+  pdf.setProducer("Handshake AI");
   return pdf.save();
 }

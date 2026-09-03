@@ -1,5 +1,6 @@
-.home-page .hero { min-height: 690px; display: grid; grid-template-columns: .96fr 1.04fr; gap: 64px; align-items: center; padding-top: 64px; padding-bottom: 64px; }
+.home-page .hero { min-height: 690px; display: grid; grid-template-columns: .96fr 1.04fr; gap: 64px; align-items: center; padding-top: 32px; padding-bottom: 64px; }
 .home-page .hero-copy { padding-bottom: 18px; }
+.home-page .hero-copy, .home-page .scene { min-width: 0; }
 .home-page .agent-badge { width: fit-content; display: flex; align-items: center; gap: 7px; margin-bottom: 24px; padding: 7px 10px; color: var(--blue); background: var(--blue-soft); border: 1px solid #dce6ff; border-radius: 999px; font-size: 12px; font-weight: 700; }
 .home-page h1 { max-width: 690px; margin: 0; color: #172033; font-size: clamp(48px, 5.35vw, 72px); line-height: 1.02; letter-spacing: -.052em; font-weight: 730; }
 .home-page h1 span { color: var(--blue); }
@@ -44,7 +45,8 @@
 }
 @media (max-width: 680px) {
   .home-page .hero { padding-top: 50px; min-height: auto; }
-  .home-page h1 { font-size: 46px; }
+  .home-page h1 { width: 100%; max-width: 350px; margin-left: auto; margin-right: auto; font-size: 39px; overflow-wrap: normal; }
+  .home-page h1 span { display: block; max-width: 100%; white-space: normal; }
   .home-page .hero-subhead { font-size: 16px; }
   .home-page .hero-actions { width: 100%; flex-direction: column; }
   .home-page .hero-actions a { width: 100%; }

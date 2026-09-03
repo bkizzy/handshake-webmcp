@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildNegotiationCertificate } from "./certificate";
-import { renderAgreementMarkdown, signatureConsentVersion, visibleKnownInformationRoles } from "./contract";
+import { knownInformationLines, renderAgreementMarkdown, signatureConsentVersion, visibleKnownInformationRoles } from "./contract";
 import {
   AgreementError,
   accessGrantsFor,
@@ -55,6 +55,14 @@ function captureError(run: () => StoredAgreement) {
 }
 
 describe("agreement lifecycle", () => {
+  it("splits known information into stable nonblank lines and Markdown bullets", () => {
+    expect(knownInformationLines(" first item\r\n\r\n second item \nfirst item")).toEqual(["first item", "second item", "first item"]);
+    const agreement = createAgreement({ ...input, fields: { ...input.fields, signerPreviouslyKnownInformation: "first item\r\n\r\nsecond item" } });
+    const markdown = renderAgreementMarkdown(agreement);
+    expect(markdown).toContain("- first item\n- second item");
+    expect(markdown).not.toContain("first item\r");
+  });
+
   it("lets only the author edit a draft and records immutable snapshots", () => {
     const original = createAgreement(input);
     const updated = executeAgreementAction(original, authorHuman, { type: "update_document_fields", fields: { governingLaw: "Delaware" } });

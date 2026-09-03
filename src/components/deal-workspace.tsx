@@ -28,13 +28,14 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import { agreementCopy, roleLabel } from "@/src/content/agreement-copy";
 import {
   agreementFieldLabels,
   agreementSummaryFieldIds,
   knownInformationField,
+  knownInformationLines,
   signatureConsentVersion,
   targetKey,
   visibleKnownInformationRoles,
@@ -131,8 +132,10 @@ export function DealWorkspace({ id }: { id: string }) {
   const [sealValid, setSealValid] = useState<boolean | null>(null);
   const [selectedRedlineId, setSelectedRedlineId] = useState<string | null>(null);
   const [visualEvent, setVisualEvent] = useState<VisualEvent | null>(null);
+  const [executionCelebration, setExecutionCelebration] = useState(false);
   const seenRedlines = useRef<Set<string>>(new Set());
   const visualTimer = useRef<number | null>(null);
+  const celebrationTimer = useRef<number | null>(null);
   const acknowledgedInitialView = useRef(false);
   const { ready: accessReady, authHeaders } = useAgreementAccess(id);
 
@@ -144,6 +147,7 @@ export function DealWorkspace({ id }: { id: string }) {
 
   useEffect(() => () => {
     if (visualTimer.current) window.clearTimeout(visualTimer.current);
+    if (celebrationTimer.current) window.clearTimeout(celebrationTimer.current);
   }, []);
 
   const acceptAgreement = useCallback((next: AgreementView, announceRemote = true) => {
@@ -156,10 +160,17 @@ export function DealWorkspace({ id }: { id: string }) {
     seenRedlines.current = new Set(next.redlines.map((redline) => redline.id));
     agreementRef.current = next;
     setAgreement(next);
+    if (previous && previous.status !== "signed" && next.status === "signed") {
+      if (celebrationTimer.current) window.clearTimeout(celebrationTimer.current);
+      setExecutionCelebration(true);
+      celebrationTimer.current = window.setTimeout(() => { setExecutionCelebration(false); celebrationTimer.current = null; }, 5200);
+    }
     if (announceRemote && previous && next.eventSequence > previous.eventSequence) {
       if (next.status !== previous.status) {
-        const kind: VisualEventKind = next.status === "signed" ? "signed" : next.status === "ready" ? "approved" : next.status === "review" ? "review" : "update";
-        triggerVisualEvent(kind, next.status === "signed" ? "Agreement fully signed" : next.status === "ready" ? "Approved and ready to sign" : next.status === "review" ? "Agreement moved to review" : "Agreement updated");
+        if (next.status !== "signed") {
+          const kind: VisualEventKind = next.status === "ready" ? "approved" : next.status === "review" ? "review" : "update";
+          triggerVisualEvent(kind, next.status === "ready" ? "Approved and ready to sign" : next.status === "review" ? "Agreement moved to review" : "Agreement updated");
+        }
       } else {
         triggerVisualEvent("update", "New agreement update received");
       }
@@ -279,7 +290,9 @@ export function DealWorkspace({ id }: { id: string }) {
         }
         else if (action.type === "invite") triggerVisualEvent("review", "Agreement moved to review");
         else if (action.type === "mark_ready") triggerVisualEvent("approved", data.agreement.status === "ready" ? "Both approvals recorded — ready to sign" : "Your approval is recorded");
-        else if (action.type === "sign") triggerVisualEvent(data.agreement.status === "signed" ? "signed" : "approved", data.agreement.status === "signed" ? "Agreement fully signed" : "Signature recorded");
+        else if (action.type === "sign") {
+          if (data.agreement.status !== "signed") triggerVisualEvent("approved", "Signature recorded");
+        }
         else if (action.type === "restore_version") triggerVisualEvent("review", "Version restored for review");
       }
       setSaveState("saved");
@@ -446,6 +459,7 @@ export function DealWorkspace({ id }: { id: string }) {
 
       <div className="sr-status" role="status" aria-live="polite" aria-atomic="true">{visualEvent?.label ?? ""}</div>
       {visualEvent && <div className={`event-celebration ${visualEvent.kind}`} key={visualEvent.key} aria-hidden="true"><span>{visualEvent.kind === "reject" ? <X size={27} /> : visualEvent.kind === "counter" || visualEvent.kind === "proposal" ? <Send size={25} /> : <Check size={27} />}</span><b>{visualEvent.label}</b></div>}
+      {executionCelebration && <div className="execution-celebration" role="status" aria-live="polite"><div className="confetti" aria-hidden="true">{Array.from({ length: 28 }, (_, index) => <i key={index} style={{ "--i": index } as CSSProperties} />)}</div><div className="celebration-card"><CheckCircle2 size={34} /><b>Agreement fully executed</b><span>Both parties signed the final version.</span></div></div>}
 
       {error && <div className="error-banner" role="alert"><span>{error}</span><button onClick={() => setError("")} aria-label="Dismiss"><X size={15} /></button></div>}
       {invitation && agreement.status === "review" && <div className="invite-banner"><Mail size={18} /><div><b>{invitation.delivered ? "Invitation sent" : "Invitation could not be delivered"} to {invitation.email}</b><span>{invitation.delivered ? "The secure email link opens the signer workspace." : "Check the address or resend from More after email is available."}</span></div></div>}
@@ -508,14 +522,15 @@ function DealAccountMenu({ agreement, profile }: { agreement: AgreementView; pro
   const party = agreement[agreement.viewerRole];
   const returnTo = `/deal/${agreement.id}?as=${agreement.viewerRole}`;
   if (!profile?.signedIn) return <Link className="create-account-cta" href={`/login?returnTo=${encodeURIComponent(returnTo)}`}>Create account</Link>;
-  return <details className="deal-user-menu"><summary aria-label="Open agreement and account menu"><span>{party.signatoryName.slice(0, 1).toUpperCase()}</span><div><b>{roleLabel(agreement.viewerRole)}</b><small>{party.email}</small></div><ChevronDown size={14} /></summary><div className="deal-menu-popover"><p>Viewing as {roleLabel(agreement.viewerRole).toLowerCase()}</p><Link href="/dashboard"><FilePenLine size={15} /> Agreements in progress</Link><Link href="/agreements/executed"><FileCheck2 size={15} /> Executed agreements</Link><Link href="/billing"><CreditCard size={15} /> Billing</Link><form action="/api/auth/logout" method="post"><button><LogOut size={15} /> Log out</button></form></div></details>;
+  return <details className="deal-user-menu"><summary aria-label="Open agreement and account menu"><span>{party.signatoryName.slice(0, 1).toUpperCase()}</span><div><b>{roleLabel(agreement.viewerRole)}</b><small>{party.email}</small></div><ChevronDown size={14} /></summary><div className="deal-menu-popover"><p>Viewing as {roleLabel(agreement.viewerRole).toLowerCase()}</p><Link href="/dashboard"><FilePenLine size={15} /> My agreements</Link><Link href="/billing"><CreditCard size={15} /> Billing</Link><form action="/api/auth/logout" method="post"><button><LogOut size={15} /> Log out</button></form></div></details>;
 }
 
 function TermDisplay({ agreement, target, label, value, openRedlines, freshRedlines, visualTarget, onSuggest, onSelectRedline, canSuggest = agreement.permissions.canRedline }: { agreement: AgreementView; target: RedlineTarget; label: string; value: string; openRedlines: Redline[]; freshRedlines: string[]; visualTarget?: string; onSuggest: (target: RedlineTarget) => void; onSelectRedline: (redlineId: string) => void; canSuggest?: boolean }) {
   const redline = openRedlines.find((item) => targetKey(item.target) === targetKey(target));
   const baseline = target.kind === "field" ? agreement.reviewBaseline.fields[target.id] : "";
   const changed = agreement.status !== "draft" && !redline && baseline !== value;
-  return <div className={`detail-row ${target.kind === "field" && target.id !== "effectiveDate" && target.id !== "governingLaw" ? "wide" : ""} ${redline ? `has-redline ${redline.proposedBy}` : ""}${visualTarget === targetKey(target) ? " event-target" : ""}`} id={redline ? `redline-target-${redline.id}` : undefined}><dt>{label}{changed && <span className="changed-chip">Changed</span>}</dt>{redline ? <dd><RedlineMarkup redline={redline} fresh={freshRedlines.includes(redline.id)} onOpen={() => onSelectRedline(redline.id)} /></dd> : <dd>{value}</dd>}{canSuggest && !redline && <button onClick={() => onSuggest(target)}><PenLine size={12} /> Suggest edit</button>}</div>;
+  const displayValue = target.kind === "field" && (target.id === "authorPreviouslyKnownInformation" || target.id === "signerPreviouslyKnownInformation") ? <ul className="known-info-list">{knownInformationLines(value).map((line, index) => <li key={`${index}-${line}`}>{line}</li>)}</ul> : value;
+  return <div className={`detail-row ${target.kind === "field" && target.id !== "effectiveDate" && target.id !== "governingLaw" ? "wide" : ""} ${redline ? `has-redline ${redline.proposedBy}` : ""}${visualTarget === targetKey(target) ? " event-target" : ""}`} id={redline ? `redline-target-${redline.id}` : undefined}><dt>{label}{changed && <span className="changed-chip">Changed</span>}</dt>{redline ? <dd><RedlineMarkup redline={redline} fresh={freshRedlines.includes(redline.id)} onOpen={() => onSelectRedline(redline.id)} /></dd> : <dd>{displayValue}</dd>}{canSuggest && !redline && <button onClick={() => onSuggest(target)}><PenLine size={12} /> Suggest edit</button>}</div>;
 }
 
 function RedlineMarkup({ redline, fresh, onOpen }: { redline: Redline; fresh: boolean; onOpen?: () => void }) {
@@ -565,7 +580,7 @@ function EndAgreementDialog({ kind, working, onClose, onSubmit }: { kind: "decli
 }
 
 function RestoreVersionDialog({ version, working, onClose, onRestore }: { version: number; working: boolean; onClose: () => void; onRestore: () => void }) {
-  return <div className="dialog-backdrop" role="presentation"><div className="dialog" role="dialog" aria-modal="true"><button className="dialog-close" onClick={onClose} aria-label="Close"><X size={18} /></button><p className="eyebrow">Version history</p><h2>Restore version {version}?</h2><p className="dialog-help">Handshake will copy that version’s document terms into a new version. Existing history remains intact, open redlines are superseded, and approvals must be collected again.</p><div className="dialog-actions"><button className="button-secondary" onClick={onClose}>Cancel</button><button className="button-primary" disabled={working} onClick={onRestore}><RotateCcw size={15} /> Restore as new version</button></div></div></div>;
+  return <div className="dialog-backdrop" role="presentation"><div className="dialog" role="dialog" aria-modal="true"><button className="dialog-close" onClick={onClose} aria-label="Close"><X size={18} /></button><p className="eyebrow">Version history</p><h2>Restore version {version}?</h2><p className="dialog-help">Handshake AI will copy that version’s document terms into a new version. Existing history remains intact, open redlines are superseded, and approvals must be collected again.</p><div className="dialog-actions"><button className="button-secondary" onClick={onClose}>Cancel</button><button className="button-primary" disabled={working} onClick={onRestore}><RotateCcw size={15} /> Restore as new version</button></div></div></div>;
 }
 
 function CertificateView({ certificate, agreement, sealValid }: { certificate: NegotiationCertificate | null; agreement: AgreementView; sealValid: boolean | null }) {

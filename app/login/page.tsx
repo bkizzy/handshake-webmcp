@@ -15,7 +15,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <LoginForm returnTo={returnTo} />
         <p className="legal">By continuing, you agree to use electronic records and signatures where permitted.</p>
       </div>
-      <Link className="home-link" href="/">← Back to Handshake</Link>
+        <Link className="home-link" href="/">← Back to Handshake AI</Link>
       <style>{`
         .login-page { min-height: 100vh; position: relative; padding-bottom: 80px; background: #f5f7fa; }
         .login-page header { height: 76px; display: flex; align-items: center; }

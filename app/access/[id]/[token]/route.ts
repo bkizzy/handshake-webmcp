@@ -13,7 +13,8 @@ export async function GET(request: Request, context: RouteContext) {
     let agreement = access.agreement;
     const role = access.role;
     const user = await getAuthenticatedUser();
-    if (user && !agreement.profileAccess[role]) {
+    const isAssociated = user ? (agreement.profileAccess[role] === user.id || (role === "author" && agreement.ownerUserId === user.id) || user.email?.toLowerCase() === agreement[role].email.toLowerCase()) : false;
+    if (user && isAssociated && !agreement.profileAccess[role]) {
       agreement = await saveAgreementToProfile(agreement, { id: user.id, email: user.email }, role);
     }
 

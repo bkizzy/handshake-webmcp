@@ -40,6 +40,11 @@ export function knownInformationField(role: PartyRole): keyof AgreementFields {
   return role === "author" ? "authorPreviouslyKnownInformation" : "signerPreviouslyKnownInformation";
 }
 
+export function knownInformationLines(value: string | undefined) {
+  const lines = (value ?? "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  return lines.length ? lines : ["None disclosed."];
+}
+
 export function visibleKnownInformationRoles(agreement: Pick<Agreement, "kind">): PartyRole[] {
   return agreement.kind === "mutual" ? ["author", "signer"] : ["signer"];
 }
@@ -86,7 +91,7 @@ export function renderAgreementMarkdown(agreement: Agreement) {
     const party = agreement[role];
     const value = agreement.fields[knownInformationField(role)]?.trim() || "None disclosed.";
     const letter = String.fromCharCode(65 + index);
-    return `## Appendix ${letter} — Previously Known Information of ${party.legalName}\n\nThe following information is identified by ${party.legalName} as information it knew lawfully and without restriction before disclosure under this Agreement:\n\n${value}`;
+    return `## Appendix ${letter} — Previously Known Information of ${party.legalName}\n\nThe following information is identified by ${party.legalName} as information it knew lawfully and without restriction before disclosure under this Agreement:\n\n${knownInformationLines(value).map((line) => `- ${line}`).join("\n")}`;
   }).join("\n\n");
   return `# ${agreement.title}\n\n_${agreement.template.name} · Template ${agreement.template.version}_\n\n${parties}\n\n**Purpose.** The Parties wish to evaluate or pursue ${agreement.fields.purpose}.\n\n${sections}\n\n## Signatures\n\nThe Parties intend electronic signatures to have the same effect as original signatures.\n\n${signatureBlock(agreement, "author")}\n\n${signatureBlock(agreement, "signer")}\n\n${appendices}\n`;
 }

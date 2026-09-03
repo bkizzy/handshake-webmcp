@@ -1,8 +1,7 @@
-import { LockKeyhole } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Brand } from "@/src/components/brand";
+import { SiteHeader } from "@/src/components/site-header";
 import { CreateAgreementTool } from "@/src/components/create-agreement-tool";
 import { NewAgreementForm } from "@/src/components/new-agreement-form";
 import { hasSupabasePublicConfig } from "@/src/lib/supabase/config";
@@ -13,7 +12,7 @@ export default async function NewNdaPage() {
   return (
     <main className="new-page">
       <CreateAgreementTool />
-      <header><div className="app-shell header-inner"><Brand /><div className="secure"><LockKeyhole size={14} /> Private workspace</div></div></header>
+      <SiteHeader />
       <div className="page-heading app-shell"><Link href="/new" className="back-link">← Agreement types</Link><h1>New NDA</h1><p>Set up the essential details before creating the draft.</p></div>
       <NewAgreementForm />
       <style>{`

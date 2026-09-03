@@ -1,13 +1,13 @@
 import type { AgreementStatus, PartyRole } from "@/src/lib/agreements/types";
 
 export const agreementCopy = {
-  brandName: "Handshake",
+  brandName: "Handshake AI",
   accessDeniedTitle: "We couldn’t open this agreement",
   openingWorkspace: "Opening secure workspace…",
   signingConsent: "I agree to use an electronic signature and intend my typed name to sign this agreement.",
   signatureCodeHelp: "We’ll email a six-digit code to verify your identity before applying your signature.",
   signedRecordNote: "The signed agreement, negotiation certificate, and cryptographic seal are locked together.",
-  privateAgentBoundary: "Private instructions and conversations between you and your agent remain in your agent interface and are not part of the Handshake record.",
+  privateAgentBoundary: "Private instructions and conversations between you and your agent remain in your agent interface and are not part of the Handshake AI record.",
 };
 
 export function roleLabel(role: PartyRole) {
@@ -74,7 +74,7 @@ export function completedEmailCopy(input: { title: string }): AgreementEmailCont
     heading: "Both parties signed the agreement.",
     body: `The final ${input.title}, negotiation certificate, and seal are now available.`,
     actionLabel: "View executed agreement",
-    footer: "The execution package records agreement actions and signatures; private agent conversations remain outside Handshake.",
+    footer: "The execution package records agreement actions and signatures; private agent conversations remain outside Handshake AI.",
   };
 }
 

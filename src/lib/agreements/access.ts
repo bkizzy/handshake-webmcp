@@ -36,7 +36,9 @@ export async function resolveAgreementAccess(id: string, request: Request) {
   const role = tokenRole ?? profileRole;
   if (!role) throw new AgreementError("This link is invalid or has expired.", "invalid_access", 403);
 
-  if (user && !agreement.profileAccess[role]) {
+  const partyEmailMatches = user?.email?.toLowerCase() === agreement[role].email.toLowerCase();
+  const isAssociated = Boolean(user && (profileRole === role || (role === "author" && agreement.ownerUserId === user.id) || partyEmailMatches));
+  if (user && !agreement.profileAccess[role] && isAssociated) {
     agreement = await saveAgreementToProfile(agreement, { id: user.id, email: user.email }, role);
   }
 
@@ -44,7 +46,7 @@ export async function resolveAgreementAccess(id: string, request: Request) {
     agreement,
     role,
     profile: {
-      signedIn: Boolean(user),
+      signedIn: isAssociated,
       saved: Boolean(agreement.profileAccess[role]),
       canClaim: !agreement.profileAccess[role],
       role,

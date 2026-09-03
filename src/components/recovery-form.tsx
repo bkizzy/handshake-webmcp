@@ -27,11 +27,11 @@ export function RecoveryForm() {
     const controller = new AbortController();
     void document.modelContext.registerTool({
       name: "handshake_recover_agreement_access",
-      description: "Request a fresh party-specific secure link for a known Handshake agreement ID and participant email. The result is deliberately generic and the link is sent only by email.",
+      description: "Request a fresh party-specific secure link for a known Handshake AI agreement ID and participant email. The result is deliberately generic and the link is sent only by email.",
       inputSchema: {
         type: "object",
         properties: {
-          agreementId: { type: "string", description: "Handshake agreement UUID." },
+          agreementId: { type: "string", description: "Handshake AI agreement UUID." },
           email: { type: "string", description: "Author or signer email on that agreement." },
         },
         required: ["agreementId", "email"],
@@ -60,5 +60,5 @@ export function RecoveryForm() {
     finally { setWorking(false); }
   }
 
-  return <section className="recovery-card"><span className="recovery-icon"><KeyRound size={23} /></span><p className="eyebrow">Secure access</p><h1>Recover an agreement</h1><p>Enter the agreement ID and your participant email. If they match, we’ll send a fresh role-specific link.</p><form onSubmit={submit}><label className="field-label">Agreement ID<input className="field-input" value={agreementId} onChange={(event) => setAgreementId(event.target.value)} required /></label><label className="field-label">Participant email<input className="field-input" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label><button className="button-primary" disabled={working}>{working ? <LoaderCircle className="spin" size={16} /> : <KeyRound size={16} />} Email a secure link</button></form>{message && <div className="recovery-message"><Check size={15} /> {message}</div>}<small>For privacy, Handshake gives the same response whether or not the details match.</small></section>;
+  return <section className="recovery-card"><span className="recovery-icon"><KeyRound size={23} /></span><p className="eyebrow">Secure access</p><h1>Recover an agreement</h1><p>Enter the agreement ID and your participant email. If they match, we’ll send a fresh role-specific link.</p><form onSubmit={submit}><label className="field-label">Agreement ID<input className="field-input" value={agreementId} onChange={(event) => setAgreementId(event.target.value)} required /></label><label className="field-label">Participant email<input className="field-input" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label><button className="button-primary" disabled={working}>{working ? <LoaderCircle className="spin" size={16} /> : <KeyRound size={16} />} Email a secure link</button></form>{message && <div className="recovery-message"><Check size={15} /> {message}</div>}<small>For privacy, Handshake AI gives the same response whether or not the details match.</small></section>;
 }

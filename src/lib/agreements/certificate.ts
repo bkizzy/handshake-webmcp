@@ -8,7 +8,7 @@ import type {
   RedlineTarget,
 } from "./types";
 
-export const certificateFooter = "Every agreement action above corresponds to a structured Handshake interaction recorded at execution time. Private instructions and conversations between a party and its agent stay in that agent interface and are not part of this record.";
+export const certificateFooter = "Every agreement action above corresponds to a structured Handshake AI interaction recorded at execution time. Private instructions and conversations between a party and its agent stay in that agent interface and are not part of this record.";
 
 function labelForTarget(agreement: Agreement, target: RedlineTarget) {
   if (target.kind === "field") return agreementFieldLabels[target.id];

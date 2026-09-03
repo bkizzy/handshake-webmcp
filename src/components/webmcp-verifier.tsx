@@ -24,7 +24,7 @@ type Invocation = {
 
 const toolNames = ["handshake_webmcp_verify", "handshake_webmcp_echo"];
 const productToolExamples = ["handshake_create_nda", "handshake_retrieve_contract", "handshake_wait_for_update", "handshake_get_certificate", "handshake_verify_seal"];
-const testPrompt = "Use the Handshake site tools on this page. Call handshake_webmcp_verify, then call handshake_webmcp_echo with the message ‘WebMCP is working’.";
+const testPrompt = "Use the Handshake AI site tools on this page. Call handshake_webmcp_verify, then call handshake_webmcp_echo with the message ‘WebMCP is working’.";
 
 function result(message: string, structuredContent: Record<string, unknown>): WebMcpToolResult {
   return { content: [{ type: "text", text: message }], structuredContent };
@@ -84,11 +84,11 @@ export function WebMcpVerifier() {
         await Promise.all([
           modelContext!.registerTool({
             name: "handshake_webmcp_verify",
-            description: "Verify that Handshake WebMCP site tools can be invoked on the current top-level page. This is a read-only diagnostic and does not access agreement data.",
+            description: "Verify that Handshake AI WebMCP site tools can be invoked on the current top-level page. This is a read-only diagnostic and does not access agreement data.",
             inputSchema: { type: "object", properties: {}, additionalProperties: false },
             annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false, untrustedContentHint: false },
             execute: async () => {
-              const message = "Handshake WebMCP registration and invocation are working.";
+              const message = "Handshake AI WebMCP registration and invocation are working.";
               recordInvocation("handshake_webmcp_verify", message);
               return result(message, {
                 ok: true,
@@ -100,7 +100,7 @@ export function WebMcpVerifier() {
           }, { signal: controller.signal }),
           modelContext!.registerTool({
             name: "handshake_webmcp_echo",
-            description: "Echo a short test message to prove that an agent can pass structured input to a Handshake WebMCP tool. This changes only the diagnostic display on this page.",
+            description: "Echo a short test message to prove that an agent can pass structured input to a Handshake AI WebMCP tool. This changes only the diagnostic display on this page.",
             inputSchema: {
               type: "object",
               properties: { message: { type: "string", description: "A short non-sensitive test message." } },
@@ -160,7 +160,7 @@ export function WebMcpVerifier() {
       <header>
         <div className="app-shell header-inner">
           <Brand />
-          <Link href="/" className="back-link">Back to Handshake</Link>
+          <Link href="/" className="back-link">Back to Handshake AI</Link>
         </div>
       </header>
 
@@ -202,7 +202,7 @@ export function WebMcpVerifier() {
       {unsupported && (
         <section className="app-shell setup-card">
           <h2>Open this page in a site-tools-capable browser</h2>
-          <p>The page cannot enable WebMCP itself. Open it in the Codex built-in browser with a model/session that exposes site tools, then reload. There is no Handshake permission toggle to change.</p>
+          <p>The page cannot enable WebMCP itself. Open it in the Codex built-in browser with a model/session that exposes site tools, then reload. There is no Handshake AI permission toggle to change.</p>
         </section>
       )}
 

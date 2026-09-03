@@ -1,8 +1,8 @@
-import { ArrowRight, BriefcaseBusiness, FilePenLine, LockKeyhole, Upload } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, FilePenLine, Upload } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Brand } from "@/src/components/brand";
+import { SiteHeader } from "@/src/components/site-header";
 import { CreateAgreementTool } from "@/src/components/create-agreement-tool";
 import { hasSupabasePublicConfig } from "@/src/lib/supabase/config";
 import { getAuthenticatedUser } from "@/src/lib/supabase/server";
@@ -14,7 +14,7 @@ export default async function NewAgreementPage() {
   return (
     <main className="chooser-page">
       <CreateAgreementTool />
-      <header><div className="app-shell header-inner"><Brand /><div className="secure"><LockKeyhole size={14} /> Private workspace</div></div></header>
+      <SiteHeader />
       <section className="chooser app-shell">
         <Link href="/" className="back-link">← Back</Link>
         <p className="eyebrow">New agreement</p>
