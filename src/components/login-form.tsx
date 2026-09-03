@@ -1,7 +1,6 @@
 "use client";
 
-import { ArrowRight, Check, KeyRound, LoaderCircle, Mail } from "lucide-react";
-import Link from "next/link";
+import { Check, KeyRound, LoaderCircle, Mail } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import { createSupabaseBrowserClient } from "@/src/lib/supabase/browser";
@@ -92,8 +91,7 @@ export function LoginForm({ returnTo = "/dashboard" }: { returnTo?: string }) {
         <span className="login-icon"><KeyRound size={22} /></span>
         <p className="eyebrow">Local development</p>
         <h1>Authentication is ready to connect.</h1>
-        <p className="intro">Add the Supabase environment variables to enable email code sign-in. Local authoring remains open while you build.</p>
-        <Link className="button-primary dev-button" href="/new">Continue without a profile <ArrowRight size={16} /></Link>
+        <p className="intro">Add the Supabase environment variables to enable email code sign-in. Agreement creation requires a signed-in profile.</p>
         <style jsx>{styles}</style>
       </section>
     );

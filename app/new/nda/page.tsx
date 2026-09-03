@@ -4,11 +4,10 @@ import { redirect } from "next/navigation";
 import { SiteHeader } from "@/src/components/site-header";
 import { CreateAgreementTool } from "@/src/components/create-agreement-tool";
 import { NewAgreementForm } from "@/src/components/new-agreement-form";
-import { hasSupabasePublicConfig } from "@/src/lib/supabase/config";
 import { getAuthenticatedUser } from "@/src/lib/supabase/server";
 
 export default async function NewNdaPage() {
-  if (hasSupabasePublicConfig() && !(await getAuthenticatedUser())) redirect("/login?returnTo=/new/nda");
+  if (!(await getAuthenticatedUser())) redirect("/login?returnTo=/new/nda");
   return (
     <main className="new-page">
       <CreateAgreementTool />
