@@ -1,12 +1,16 @@
 import { ArrowRight, BriefcaseBusiness, FilePenLine, LockKeyhole, Upload } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { Brand } from "@/src/components/brand";
 import { CreateAgreementTool } from "@/src/components/create-agreement-tool";
+import { hasSupabasePublicConfig } from "@/src/lib/supabase/config";
+import { getAuthenticatedUser } from "@/src/lib/supabase/server";
 
 export const metadata = { title: "Choose an agreement" };
 
-export default function NewAgreementPage() {
+export default async function NewAgreementPage() {
+  if (hasSupabasePublicConfig() && !(await getAuthenticatedUser())) redirect("/login?returnTo=/new");
   return (
     <main className="chooser-page">
       <CreateAgreementTool />

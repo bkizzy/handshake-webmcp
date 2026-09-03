@@ -1,0 +1,23 @@
+export const homeCopy = {
+  badge: "Built for people and their agents",
+  headline: "Your agents negotiate.",
+  headlineAccent: "You decide.",
+  subhead: "Create, redline, and sign real agreements in one shared workspace. Let agents handle the repetitive details while every decision stays visible—and every signature stays human.",
+  primaryAction: "Start an agreement",
+  secondaryAction: "See how it works",
+  proof: "No account needed to review or sign",
+  trust: ["Human-approved signatures", "Transparent redline history", "Agent-accessible workflows"],
+  howEyebrow: "How it works",
+  howHeadline: "Two parties. Two agents.",
+  howHeadlineAccent: "One agreement.",
+  howIntro: "Use Handshake yourself, hand work to an agent, or move between both. The document never leaves the shared workspace.",
+  steps: [
+    { title: "Create and invite", body: "Start from a practical NDA, fill in the parties and purpose, then invite the other side with a secure link." },
+    { title: "Review and redline", body: "People or their agents can propose, accept, reject, or counter changes—with every action attributed and recorded." },
+    { title: "Approve and sign", body: "Both parties approve the final version. Each human verifies by email code, reviews once more, and signs." },
+  ],
+  closingEyebrow: "Agent-negotiated. Human-approved.",
+  closingHeadline: "Move the agreement forward.",
+  closingAction: "Create an NDA",
+  footer: "Agreements for people and agents.",
+};

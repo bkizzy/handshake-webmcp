@@ -54,7 +54,7 @@ export function CreateAgreementTool() {
           const get = (key: string, fallback = "") => typeof input[key] === "string" ? (input[key] as string).trim() : fallback;
           const kind = get("kind");
           if (kind !== "mutual" && kind !== "one-way") throw new Error("kind must be mutual or one-way.");
-          const response = await fetch("/api/agreements", {
+          const response = await fetch("/api/agreements/agent", {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({

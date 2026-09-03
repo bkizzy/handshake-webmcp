@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 
-import { agreementAccessCookieName } from "@/src/lib/agreements/access";
 import { getAgreementByAccess, claimAgreementForUser } from "@/src/lib/agreements/repository";
 import { apiError } from "@/src/lib/http";
 import { getAuthenticatedUser } from "@/src/lib/supabase/server";
@@ -18,14 +17,9 @@ export async function GET(request: Request, context: RouteContext) {
       agreement = await claimAgreementForUser(agreement, { id: user.id, email: user.email });
     }
 
-    const response = NextResponse.redirect(new URL(`/deal/${agreement.id}`, request.url));
-    response.cookies.set(agreementAccessCookieName(agreement.id), token, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: new URL(request.url).protocol === "https:",
-      expires: new Date(agreement.access[role]!.expiresAt),
-      path: "/",
-    });
+    const destination = new URL(`/deal/${agreement.id}`, request.url);
+    destination.hash = `access=${encodeURIComponent(token)}`;
+    const response = NextResponse.redirect(destination);
     response.headers.set("cache-control", "no-store");
     response.headers.set("referrer-policy", "no-referrer");
     return response;

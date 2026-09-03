@@ -14,8 +14,8 @@ The product does not contain a negotiation playbook. It provides neutral documen
 4. Either party—or either party's browser agent—can propose redlines.
 5. The other party can accept, reject, or counter each proposal.
 6. Both parties approve the current version after all redlines are resolved.
-7. Each human reviews and signs. Handshake exposes no agent signing tool.
-8. The executed version is locked, hashed, downloadable, and retained with its activity record.
+7. Each human requests a six-digit email code, reviews the electronic-signature consent, and signs. Handshake exposes no agent signing tool.
+8. The executed version is locked with a deterministic SHA-256 seal and retained alongside a Certificate of Negotiation.
 
 Any new change clears both approvals and any partial signatures. A completed agreement is read-only.
 
@@ -25,17 +25,26 @@ Handshake registers imperative WebMCP tools through `document.modelContext`. The
 
 - `handshake_create_nda`
 - `handshake_get_agreement`
+- `handshake_retrieve_contract`
 - `handshake_update_document_details`
 - `handshake_update_draft_section`
+- `handshake_update_participant`
 - `handshake_invite_signer`
 - `handshake_list_redlines`
 - `handshake_propose_redline`
 - `handshake_respond_to_redline`
 - `handshake_approve_current_version`
 - `handshake_get_activity`
+- `handshake_wait_for_update`
 - `handshake_resend_signer_link`
+- `handshake_decline_agreement`
+- `handshake_void_agreement`
+- `handshake_get_certificate` (signed only)
+- `handshake_verify_seal` (signed only)
+- `handshake_get_execution_package` (signed only)
+- `handshake_recover_agreement_access` (recovery page)
 
-Humans and agents call the same agreement actions. Signing is intentionally absent from the WebMCP surface.
+Agents can create, retrieve, edit, invite, redline, respond, approve, correct participants, recover access, close, and inspect executed records. Signing is intentionally absent from the WebMCP surface and is accepted only by the human action endpoint after email-code verification.
 
 Open `http://localhost:3000/webmcp` in the Codex built-in browser to verify the integration. The page separately checks API injection, successful tool registration, and an actual agent invocation. With GPT-5.6 Sol or Terra selected, make sure **Settings → Browser → Permissions → Enable site tools** is on, then inspect **Site tools** in the browser address bar.
 
@@ -59,7 +68,7 @@ pnpm check
 Copy `.env.example` to `.env.local` and configure:
 
 - **Supabase** for Postgres persistence and passwordless author authentication.
-- **Resend** for signer invitation email.
+- **Resend** for invitations, negotiated-update handoffs, signature codes, completion notices, and recovery links.
 - **Vercel** for hosting and environment variables.
 
 Apply [`supabase/migrations/0001_agreements.sql`](supabase/migrations/0001_agreements.sql) in the Supabase SQL editor. The agreements table has row-level security enabled and no browser policies; only the server secret can access it.
@@ -83,12 +92,23 @@ When Supabase is configured, an authenticated author owns each created agreement
 
 - Next.js App Router and React
 - Framework-independent agreement domain in `src/lib/agreements`
-- One action API shared by the UI and WebMCP adapters
+- Editable product/email copy in `src/content`, with the landing and agreement-workspace styling in standalone CSS files
+- Separate human and agent action entrypoints, with attribution derived from the route rather than trusted from request data
 - Supabase JSONB persistence with profile ownership and an in-memory development fallback
 - Resend's HTTP API for invitation email
 - Zod request validation and Vitest lifecycle tests
 
-Raw access tokens are never stored. Magic links are exchanged for HTTP-only browser sessions, their hashes and expirations remain server-side, and a refreshed signer link invalidates the prior one. Access data and owner IDs are stripped from every public agreement view. Agreement text and redline rationales are marked as untrusted content in tool annotations.
+Raw access tokens are never stored. Each author and signer link carries an independent capability; after link validation the browser keeps only its own token in tab-scoped `sessionStorage` and sends it in the `Authorization` header. Token hashes and expirations remain server-side. Explicitly resending an invitation or correcting the signer email revokes prior signer links, while ordinary update notices add a fresh link without breaking an already-open tab. Access data, signature challenges, notification state, idempotency keys, and owner IDs are stripped from every public agreement view. Agreement text and redline rationales are marked as untrusted content in tool annotations.
+
+This is capability-link authentication appropriate for the hackathon. A production hardening pass would add email-bound accounts for both parties, shorter-lived/revocable sessions, rate limiting, and stronger identity verification.
+
+Handshake uses an event cursor on every mutation to reject stale actions before they can overwrite newer work. While an agent is active, `handshake_wait_for_update` polls the server briefly. For negotiations spanning hours or days, Handshake sends one actionable email handoff and groups later changes until that party reads or acknowledges the batch; the next post-acknowledgement change starts a new handoff.
+
+At the second signature, Handshake deterministically serializes the final terms, final contract text, complete action history, and both verified signatures, then seals that canonical record with SHA-256. This proves the stored record has not changed after sealing; it is not a blockchain and not a substitute for a qualified e-signature provider.
+
+The downloaded certificate JSON includes both `seal.hash` and the exact `seal.canonicalJson` string. An independent check on macOS is `jq -j -r '.seal.canonicalJson' handshake-*-certificate.json | shasum -a 256`; the resulting digest must equal `seal.hash`.
+
+The Certificate of Negotiation records actions that occurred through Handshake and attributes human versus agent interaction surfaces. Private prompts, conversations, priorities, and any “phone home” between a person and their external agent remain outside Handshake and are not claimed as evidence.
 
 ## Demo
 

@@ -3,8 +3,9 @@ import {
   accessTokenMatches,
   createAccessGrant,
   createAgreement,
+  normalizeAgreement,
 } from "./domain";
-import type { CreateAgreementInput, PartyRole, StoredAgreement } from "./types";
+import type { ActorSource, CreateAgreementInput, PartyRole, StoredAgreement } from "./types";
 import { createSupabaseAdminClient } from "@/src/lib/supabase/server";
 
 type AgreementStore = Map<string, StoredAgreement>;
@@ -21,9 +22,9 @@ export type AgreementAccess = {
   role: PartyRole;
 };
 
-export async function createStoredAgreement(input: CreateAgreementInput, ownerUserId?: string) {
+export async function createStoredAgreement(input: CreateAgreementInput, ownerUserId?: string, source: ActorSource = "human") {
   const { token: authorToken, grant } = createAccessGrant();
-  const agreement = createAgreement(input, grant);
+  const agreement = createAgreement(input, grant, source);
   agreement.ownerUserId = ownerUserId;
   const supabase = createSupabaseAdminClient();
   if (supabase) {
@@ -46,10 +47,10 @@ export async function getAgreementById(id: string) {
   if (supabase) {
     const { data, error } = await supabase.from("agreements").select("data").eq("id", id).maybeSingle();
     if (error) throw new AgreementError("The agreement could not be loaded.", "persistence_error", 500);
-    return data ? (data.data as StoredAgreement) : null;
+    return data ? normalizeAgreement(data.data as StoredAgreement) : null;
   }
   const agreement = store.get(id);
-  return agreement ? structuredClone(agreement) : null;
+  return agreement ? normalizeAgreement(agreement) : null;
 }
 
 export async function getAgreementByAccess(id: string, token: string): Promise<AgreementAccess> {
@@ -71,7 +72,7 @@ export async function listAgreementsByOwner(ownerUserId: string) {
       .eq("owner_user_id", ownerUserId)
       .order("updated_at", { ascending: false });
     if (error) throw new AgreementError("Your agreements could not be loaded.", "persistence_error", 500);
-    return (data ?? []).map((row) => row.data as StoredAgreement);
+    return (data ?? []).map((row) => normalizeAgreement(row.data as StoredAgreement));
   }
   return [...store.values()]
     .filter((agreement) => agreement.ownerUserId === ownerUserId)
@@ -91,24 +92,29 @@ export async function claimAgreementForUser(
   return saveAgreement(agreement);
 }
 
-export async function saveAgreement(agreement: StoredAgreement) {
+export async function saveAgreement(agreement: StoredAgreement, options: { expectedUpdatedAt?: string } = {}) {
   const supabase = createSupabaseAdminClient();
   if (supabase) {
-    const { data, error } = await supabase
+    let query = supabase
       .from("agreements")
       .update({
         owner_user_id: agreement.ownerUserId ?? null,
         data: agreement,
         updated_at: agreement.updatedAt,
       })
-      .eq("id", agreement.id)
-      .select("id")
-      .maybeSingle();
+      .eq("id", agreement.id);
+    if (options.expectedUpdatedAt) query = query.eq("updated_at", options.expectedUpdatedAt);
+    const { data, error } = await query.select("id").maybeSingle();
     if (error) throw new AgreementError("The agreement could not be saved.", "persistence_error", 500);
+    if (!data && options.expectedUpdatedAt) throw new AgreementError("The agreement changed before this action could be saved. Read the latest state and retry.", "state_changed", 409);
     if (!data) throw new AgreementError("Agreement not found.", "not_found", 404);
     return structuredClone(agreement);
   }
-  if (!store.has(agreement.id)) throw new AgreementError("Agreement not found.", "not_found", 404);
+  const stored = store.get(agreement.id);
+  if (!stored) throw new AgreementError("Agreement not found.", "not_found", 404);
+  if (options.expectedUpdatedAt && stored.updatedAt !== options.expectedUpdatedAt) {
+    throw new AgreementError("The agreement changed before this action could be saved. Read the latest state and retry.", "state_changed", 409);
+  }
   store.set(agreement.id, structuredClone(agreement));
   return structuredClone(agreement);
 }

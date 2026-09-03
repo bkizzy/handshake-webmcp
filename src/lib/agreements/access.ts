@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 
-import { AgreementError, accessTokenMatches } from "./domain";
+import { AgreementError, accessTokenMatches, normalizeAgreement } from "./domain";
 import {
   claimAgreementForUser,
   getAgreementById,
@@ -15,11 +15,16 @@ export function agreementAccessCookieName(id: string) {
 export async function resolveAgreementAccess(id: string, request: Request) {
   let agreement = await getAgreementById(id);
   if (!agreement) throw new AgreementError("Agreement not found.", "not_found", 404);
+  agreement = normalizeAgreement(agreement);
   const storedAgreement = agreement;
 
   const cookieStore = await cookies();
   const requestToken = new URL(request.url).searchParams.get("token") ?? "";
-  const token = requestToken || cookieStore.get(agreementAccessCookieName(id))?.value || "";
+  const authorization = request.headers.get("authorization") ?? "";
+  const bearerToken = authorization.toLowerCase().startsWith("bearer ")
+    ? authorization.slice(7).trim()
+    : "";
+  const token = bearerToken || requestToken || cookieStore.get(agreementAccessCookieName(id))?.value || "";
   const tokenRole = (Object.keys(storedAgreement.access) as PartyRole[]).find((candidate) =>
     accessTokenMatches(storedAgreement.access[candidate], token),
   );

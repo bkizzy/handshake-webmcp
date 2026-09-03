@@ -5,6 +5,8 @@ import type { StoredAgreement } from "@/src/lib/agreements/types";
 
 function displayStatus(agreement: StoredAgreement) {
   if (agreement.status === "signed") return "Executed";
+  if (agreement.status === "declined") return "Declined";
+  if (agreement.status === "voided") return "Voided";
   if (agreement.status === "ready") return Object.keys(agreement.signatures).length ? "Awaiting signature" : "Ready to sign";
   if (agreement.status === "review") {
     if (agreement.redlines.some((redline) => redline.status === "open")) return "Redlining";

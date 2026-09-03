@@ -23,6 +23,7 @@ type Invocation = {
 };
 
 const toolNames = ["handshake_webmcp_verify", "handshake_webmcp_echo"];
+const productToolExamples = ["handshake_create_nda", "handshake_retrieve_contract", "handshake_wait_for_update", "handshake_get_certificate", "handshake_verify_seal"];
 const testPrompt = "Use the Handshake site tools on this page. Call handshake_webmcp_verify, then call handshake_webmcp_echo with the message ‘WebMCP is working’.";
 
 function result(message: string, structuredContent: Record<string, unknown>): WebMcpToolResult {
@@ -188,6 +189,7 @@ export function WebMcpVerifier() {
         <div className="card tools-card">
           <div className="card-heading"><Wrench size={19} /><div><h2>Tools on this page</h2><p>Open Site tools in the browser address bar to inspect them.</p></div></div>
           {toolNames.map((name) => <code key={name}>{name}<span>{ready ? "Registered" : "Waiting"}</span></code>)}
+          <p className="context-note">Agreement tools register only on the page and lifecycle phase where they are valid. Examples: {productToolExamples.join(", ")}.</p>
           <div className="prompt-box"><span>Test from Codex</span><p>{testPrompt}</p><button onClick={() => void copyPrompt()}>{copied ? <Check size={14} /> : <Copy size={14} />}{copied ? "Copied" : "Copy prompt"}</button></div>
         </div>
       </section>
@@ -199,9 +201,8 @@ export function WebMcpVerifier() {
 
       {unsupported && (
         <section className="app-shell setup-card">
-          <h2>Enable it in Codex</h2>
-          <ol><li>Use GPT-5.6 Sol or Terra.</li><li>Open <b>Settings → Browser → Permissions</b>.</li><li>Turn on <b>Enable site tools</b>, then reload this page.</li></ol>
-          <p>Site tools are not available in Enterprise or Edu workspaces and may still depend on account rollout.</p>
+          <h2>Open this page in a site-tools-capable browser</h2>
+          <p>The page cannot enable WebMCP itself. Open it in the Codex built-in browser with a model/session that exposes site tools, then reload. There is no Handshake permission toggle to change.</p>
         </section>
       )}
 
@@ -227,6 +228,7 @@ export function WebMcpVerifier() {
         .tools-card { display: flex; flex-direction: column; }
         .tools-card > code { margin-top: 14px; padding: 12px 13px; display: flex; justify-content: space-between; gap: 12px; color: #344057; background: #f7f9fc; border: 1px solid var(--soft-line); border-radius: 8px; font-size: 12px; }
         .tools-card > code span { color: ${ready ? "var(--green)" : "#8a93a3"}; font-family: Inter, sans-serif; font-weight: 700; }
+        .context-note { margin: 15px 0 0; color: #778296; font-size: 10px; line-height: 1.55; }
         .prompt-box { margin-top: 20px; padding: 17px; background: #17213a; color: white; border-radius: 10px; }
         .prompt-box > span { color: #9bb6ff; font-size: 11px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
         .prompt-box p { margin: 9px 0 14px; color: #e7ecf6; font-size: 13px; line-height: 1.55; }
@@ -235,9 +237,7 @@ export function WebMcpVerifier() {
         .invocation-card p { margin: 6px 0 0; color: #687287; }
         .invocation-card code { color: #344057; font-size: 12px; }
         .setup-card { margin-top: 20px; border-color: #ecd7aa; background: #fffbf1; }
-        .setup-card ol { margin: 14px 0 0; padding-left: 22px; color: #59657a; }
-        .setup-card li { margin-top: 6px; }
-        .setup-card p { margin: 17px 0 0; color: #7a6b4e; font-size: 12px; }
+        .setup-card p { margin: 14px 0 0; color: #7a6b4e; font-size: 12px; }
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         @media (max-width: 760px) { .diagnostic-grid { grid-template-columns: 1fr; } .intro { padding-top: 52px; } .card, .invocation-card, .setup-card { padding: 22px; } }

@@ -7,7 +7,7 @@ This script demonstrates Handshake's neutral capabilities. None of the preferenc
 - Open the deployed Handshake landing page in two separate ChatGPT Work tasks.
 - Use one task for the author and one for the signer.
 - Give the signer task the secure review link delivered by email.
-- Keep both agreement tabs open so the activity and redline views update live.
+- Keep both agreement tabs open for the fast live sequence. For the multi-day story, close the signer tab and show the next actionable update arriving by email.
 
 Use fictional demo companies and non-deliverable email addresses until transactional email is intentionally being tested.
 
@@ -44,9 +44,20 @@ That question is useful because it concerns a business fact or disclosure choice
 4. The signer agent proposes the pre-existing-materials, purpose, and term redlines.
 5. The author agent accepts or counters; the activity rail identifies each agent and version.
 6. Both agents approve the resolved version.
-7. Handshake removes agent mutation tools for the final signature step.
-8. Each human uses **Review & sign**.
-9. The agreement becomes signed and read-only.
+7. Each agent uses `handshake_wait_for_update` while active; Handshake email provides the durable handoff while an agent is dormant.
+8. Handshake exposes no signing tool. Each human uses **Review & sign**, requests a six-digit email code, accepts the electronic-signature consent, and signs.
+9. The agreement becomes sealed and read-only.
+10. Open **Certificate of Negotiation**, verify the green SHA-256 seal, and download the independent JSON copy.
+
+## Long-running handoff beat
+
+After the first signer proposal, leave the author task dormant. The author receives one action-required email containing a fresh author-specific link. Make one more signer-side change before the author opens it and show that no duplicate email is sent. When the author follows the link or its agent reads the agreement, that batch is acknowledged. A later signer action begins a new email batch.
+
+If an agent reads a proposal and then asks its owner a question in Codex, Claw, or another agent interface, that is an external conversation. Handshake records no invented “escalation” event. If the agreement changes before the agent responds, its stale mutation is rejected and the tool receives the newest agreement state to review before retrying.
+
+## Evidence beat
+
+After both signatures, show both signed-phase tabs. The executed agreement is clean and printable. The certificate shows term-by-term movement and human/agent action attribution. Call `handshake_get_certificate`, then `handshake_verify_seal`. Narration: “Traditional e-signing proves what was signed. Handshake also preserves how the terms changed—without claiming access to either party’s private agent conversation.”
 
 ## Optional redlines for later demos
 
@@ -57,4 +68,3 @@ That question is useful because it concerns a business fact or disclosure choice
 - Clarify that no license is granted to pre-existing materials.
 
 Keep the main demo to two or three redlines. The goal is to show credible bilateral work, not to simulate a long negotiation.
-

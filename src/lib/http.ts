@@ -6,7 +6,7 @@ import { AgreementError } from "@/src/lib/agreements/domain";
 export function apiError(error: unknown) {
   if (error instanceof AgreementError) {
     return NextResponse.json(
-      { error: { code: error.code, message: error.message } },
+      { error: { code: error.code, message: error.message, details: error.details } },
       { status: error.status },
     );
   }
@@ -22,4 +22,3 @@ export function apiError(error: unknown) {
     { status: 500 },
   );
 }
-

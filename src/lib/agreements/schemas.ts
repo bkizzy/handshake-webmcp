@@ -48,6 +48,11 @@ const agreementActionSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("invite") }),
   z.object({
+    type: z.literal("update_participant"),
+    role: z.enum(["author", "signer"]),
+    participant: partySchema.partial().refine((value) => Object.keys(value).length > 0),
+  }),
+  z.object({
     type: z.literal("propose_redline"),
     target: redlineTargetSchema,
     proposedValue: z.string().trim().min(1),
@@ -62,11 +67,29 @@ const agreementActionSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("resend_invitation") }),
   z.object({ type: z.literal("mark_ready") }),
-  z.object({ type: z.literal("sign"), typedName: z.string().trim().min(1) }),
+  z.object({ type: z.literal("decline"), reason: z.string().trim().min(1).max(1000) }),
+  z.object({ type: z.literal("void"), reason: z.string().trim().min(1).max(1000) }),
+  z.object({
+    type: z.literal("sign"),
+    typedName: z.string().trim().min(1),
+    code: z.string().regex(/^\d{6}$/),
+    consentVersion: z.string().trim().min(1),
+  }),
 ]);
 
 export const actionRequestSchema = z.object({
-  source: z.enum(["human", "agent"]),
   idempotencyKey: z.string().trim().min(8).max(120).optional(),
+  expectedEventSequence: z.number().int().nonnegative(),
   action: agreementActionSchema,
+});
+
+export const acknowledgeRequestSchema = z.object({
+  throughSequence: z.number().int().nonnegative(),
+});
+
+export const signatureCodeRequestSchema = z.object({});
+
+export const recoverAgreementSchema = z.object({
+  agreementId: z.string().uuid(),
+  email: z.email(),
 });
