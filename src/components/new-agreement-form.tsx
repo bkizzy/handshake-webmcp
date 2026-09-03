@@ -40,9 +40,9 @@ const initialState: FormState = {
   signerEmail: "",
 };
 
-export function NewAgreementForm() {
+export function NewAgreementForm({ authorEmail }: { authorEmail: string }) {
   const router = useRouter();
-  const [form, setForm] = useState(initialState);
+  const [form, setForm] = useState(() => ({ ...initialState, authorEmail }));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 

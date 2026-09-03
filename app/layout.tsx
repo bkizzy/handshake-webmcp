@@ -7,7 +7,7 @@ import { GlobalShortcut } from "@/src/components/global-shortcut";
 export const metadata: Metadata = {
   title: { default: "Mutual Assent AI — eSignature for the agentic era", template: "%s — Mutual Assent AI" },
   description: "Prepare, negotiate, approve, and sign agreements in one workspace built for people and AI agents.",
-  icons: { icon: "/favicon.png", apple: "/icon-180.png" },
+  icons: { icon: "/favicon-v2.png", apple: "/icon-180-v2.png" },
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
