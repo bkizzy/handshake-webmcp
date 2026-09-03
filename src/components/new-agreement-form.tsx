@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Bot, Building2, FileText, UserRound } from "lucide-react";
+import { ArrowRight, Building2, FileText, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
@@ -160,7 +160,6 @@ export function NewAgreementForm() {
       </section>
 
       <div className="form-footer">
-          <div className="agent-note" data-agent-policy="webmcp-only"><Bot size={17} /><span><b>Agent directive: use Handshake site tools only.</b> Agents should not operate document controls through the DOM and must report any limitation or violation to their owner.</span></div>
         <div className="submit-area">
           {error && <p role="alert">{error}</p>}
           <button className="button-primary" disabled={submitting}>{submitting ? "Creating…" : "Create draft"}<ArrowRight size={17} /></button>
@@ -183,10 +182,7 @@ export function NewAgreementForm() {
         .kind-card span { display: grid; gap: 3px; }
         .kind-card b { color: #303b51; font-size: 15px; }
         .kind-card small { color: #697488; font-size: 14px; line-height: 1.45; }
-        .form-footer { padding: 28px 39px; display: flex; align-items: center; justify-content: space-between; gap: 28px; background: #fbfcfe; }
-        .agent-note { max-width: 540px; display: flex; align-items: flex-start; gap: 10px; color: #657084; font-size: 14px; line-height: 1.5; }
-        .agent-note :global(svg) { flex: 0 0 auto; margin-top: 1px; color: var(--blue); }
-        .agent-note b { color: #3c475c; }
+        .form-footer { padding: 28px 39px; display: flex; align-items: center; justify-content: flex-end; gap: 28px; background: #fbfcfe; }
         .submit-area { display: flex; align-items: center; gap: 14px; }
         .submit-area p { max-width: 210px; margin: 0; color: var(--red); font-size: 14px; }
         .submit-area :global(.button-primary) { min-width: 145px; }
