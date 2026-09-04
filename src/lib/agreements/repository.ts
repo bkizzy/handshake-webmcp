@@ -17,6 +17,14 @@ const globalForAgreements = globalThis as typeof globalThis & {
 const store = globalForAgreements.handshakeAgreements ?? new Map<string, StoredAgreement>();
 globalForAgreements.handshakeAgreements = store;
 
+function repositoryClient() {
+  const client = createSupabaseAdminClient();
+  if (!client && process.env.NODE_ENV === "production") {
+    throw new AgreementError("Agreement storage is not configured.", "persistence_unavailable", 503);
+  }
+  return client;
+}
+
 export type AgreementAccess = {
   agreement: StoredAgreement;
   role: PartyRole;
@@ -27,7 +35,7 @@ export async function createStoredAgreement(input: CreateAgreementInput, ownerUs
   const agreement = createAgreement(input, grant, source);
   agreement.ownerUserId = ownerUserId;
   if (ownerUserId) agreement.profileAccess.author = ownerUserId;
-  const supabase = createSupabaseAdminClient();
+  const supabase = repositoryClient();
   if (supabase) {
     const { error } = await supabase.from("agreements").insert({
       id: agreement.id,
@@ -44,7 +52,7 @@ export async function createStoredAgreement(input: CreateAgreementInput, ownerUs
 }
 
 export async function getAgreementById(id: string) {
-  const supabase = createSupabaseAdminClient();
+  const supabase = repositoryClient();
   if (supabase) {
     const { data, error } = await supabase.from("agreements").select("data").eq("id", id).maybeSingle();
     if (error) throw new AgreementError("The agreement could not be loaded.", "persistence_error", 500);
@@ -65,7 +73,7 @@ export async function getAgreementByAccess(id: string, token: string): Promise<A
 }
 
 export async function listAgreementsByOwner(ownerUserId: string) {
-  const supabase = createSupabaseAdminClient();
+  const supabase = repositoryClient();
   if (supabase) {
     const queries = await Promise.all([
       supabase.from("agreements").select("data").eq("owner_user_id", ownerUserId),
@@ -107,7 +115,7 @@ export async function saveAgreementToProfile(
 }
 
 export async function saveAgreement(agreement: StoredAgreement, options: { expectedUpdatedAt?: string } = {}) {
-  const supabase = createSupabaseAdminClient();
+  const supabase = repositoryClient();
   if (supabase) {
     let query = supabase
       .from("agreements")

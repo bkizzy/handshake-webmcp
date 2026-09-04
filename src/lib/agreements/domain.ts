@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomInt, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 
 import { knownInformationField, reviewBaseline, signatureConsentVersion, templateForKind } from "./contract";
 import { createNdaSections } from "./template";
@@ -72,7 +72,10 @@ export function accessTokenMatches(value: AccessGrant | AccessGrant[] | undefine
   if (!token) return false;
   const tokenHash = sha256(token);
   return accessGrantsFor(value).some(
-    (grant) => Date.parse(grant.expiresAt) > Date.now() && grant.tokenHash === tokenHash,
+    (grant) => {
+      if (Date.parse(grant.expiresAt) <= Date.now() || grant.tokenHash.length !== tokenHash.length) return false;
+      return timingSafeEqual(Buffer.from(grant.tokenHash), Buffer.from(tokenHash));
+    },
   );
 }
 
@@ -624,6 +627,12 @@ export function toAgreementView(current: StoredAgreement, viewerRole: PartyRole)
   delete (cloned as Partial<StoredAgreement>).processedActionKeys;
   delete (cloned as Partial<StoredAgreement>).signatureChallenges;
   delete (cloned as Partial<StoredAgreement>).notifications;
+  if (cloned.execution) delete cloned.execution.canonicalJson;
+  for (const signature of Object.values(cloned.signatures)) {
+    if (!signature) continue;
+    delete signature.ipAddress;
+    delete signature.userAgent;
+  }
   const publicAgreement = cloned as Agreement;
   const openRedlines = agreement.redlines.some((item) => item.status === "open");
   const closed = terminalStatuses.has(agreement.status);

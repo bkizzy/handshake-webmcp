@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     });
     const { agreement, authorToken } = await createStoredAgreement(input, user?.id, "agent");
     const origin = (process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin).replace(/\/$/, "");
-    return NextResponse.json({ agreement: toAgreementView(agreement, "author"), links: { author: `${origin}/access/${agreement.id}/${authorToken}` } }, { status: 201 });
+    return NextResponse.json({ agreement: toAgreementView(agreement, "author"), links: { author: `${origin}/deal/${agreement.id}#access=${encodeURIComponent(authorToken)}` } }, { status: 201 });
   } catch (error) {
     return apiError(error);
   }

@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     issued.agreement.notifications[role].recoverySentAt = new Date().toISOString();
     await saveAgreement(issued.agreement, { expectedUpdatedAt: current.updatedAt });
     const origin = (process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin).replace(/\/$/, "");
-    await sendAgreementRecovery(issued.agreement, role, `${origin}/access/${issued.agreement.id}/${issued.token}`);
+    await sendAgreementRecovery(issued.agreement, role, `${origin}/deal/${issued.agreement.id}#access=${encodeURIComponent(issued.token)}`);
     return NextResponse.json(genericResponse);
   } catch (error) {
     return apiError(error);

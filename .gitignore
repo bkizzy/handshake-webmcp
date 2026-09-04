@@ -9,6 +9,11 @@
 # test
 /coverage
 
+# local demo recordings and rendered review media
+/demo/captures
+/demo/review
+/demo/work
+
 # local data and environment
 /.data
 .env*

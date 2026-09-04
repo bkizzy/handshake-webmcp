@@ -56,6 +56,17 @@ export function actionRequiredEmailCopy(input: { title: string; eventCount: numb
   };
 }
 
+export function approvalResetEmailCopy(input: { title: string }): AgreementEmailContent {
+  return {
+    subject: `Changes require renewed approval for ${input.title}`,
+    eyebrow: "Approval reset",
+    heading: "A new redline changed the approved agreement.",
+    body: `${input.title} is back in review. Previous approvals no longer apply; review the proposed change and approve the resulting version again.`,
+    actionLabel: "Review new redline",
+    footer: "The secure link opens your party’s workspace. Signing remains unavailable until both parties approve the updated version.",
+  };
+}
+
 export function signatureReadyEmailCopy(input: { title: string }): AgreementEmailContent {
   return {
     subject: `${input.title} is ready for your signature`,

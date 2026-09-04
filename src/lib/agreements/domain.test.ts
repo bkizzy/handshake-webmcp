@@ -15,13 +15,14 @@ import {
 } from "./domain";
 import { buildAgreementPdf } from "./pdf";
 import { sealSignedAgreement, verifyAgreementSeal } from "./seal";
+import { createAgreementSchema } from "./schemas";
 import type { CreateAgreementInput, StoredAgreement } from "./types";
 
 const input: CreateAgreementInput = {
   title: "Product evaluation NDA",
   kind: "mutual",
   author: { legalName: "Acme Labs, Inc.", address: "1 Market Street, San Francisco, CA 94105", signatoryName: "Avery Author", signatoryTitle: "CEO", email: "avery@example.com" },
-  signer: { legalName: "Boris Systems LLC", address: "11 Broadway, New York, NY 10004", signatoryName: "Sam Signer", signatoryTitle: "Founder", email: "sam@example.com" },
+  signer: { legalName: "Signal Forge LLC", address: "200 Example Avenue, New York, NY 10001", signatoryName: "Sam Signer", signatoryTitle: "Founder", email: "sam@example.com" },
   fields: { effectiveDate: "2026-09-01", purpose: "a potential product integration", governingLaw: "New York", authorPreviouslyKnownInformation: "None disclosed.", signerPreviouslyKnownInformation: "None disclosed." },
 };
 
@@ -106,7 +107,7 @@ describe("agreement lifecycle", () => {
     expect(oneWay.sections[0].body).toContain("Only information disclosed by or on behalf of the Disclosing Party");
     expect(visibleKnownInformationRoles(mutual)).toEqual(["author", "signer"]);
     expect(visibleKnownInformationRoles(oneWay)).toEqual(["signer"]);
-    expect(renderAgreementMarkdown(oneWay)).toContain("Appendix A — Previously Known Information of Boris Systems LLC");
+    expect(renderAgreementMarkdown(oneWay)).toContain("Appendix A — Previously Known Information of Signal Forge LLC");
     expect(renderAgreementMarkdown(oneWay)).not.toContain("Previously Known Information of Acme Labs, Inc.");
   });
 
@@ -134,6 +135,17 @@ describe("agreement lifecycle", () => {
     agreement = executeAgreementAction(agreement, authorHuman, { type: "mark_ready" });
     agreement = executeAgreementAction(agreement, signerHuman, { type: "mark_ready" });
     expect(agreement.status).toBe("ready");
+  });
+
+  it("returns an approved agreement to review when a new redline is proposed", () => {
+    const agreement = executeAgreementAction(readyAgreement(), signerAgent, {
+      type: "propose_redline",
+      target: { kind: "field", id: "purpose" },
+      proposedValue: "a revised product integration",
+      rationale: "The approved scope needs revision.",
+    });
+    expect(agreement.status).toBe("review");
+    expect(agreement.readiness).toEqual({ author: false, signer: false });
   });
 
   it("keeps signing human-only and requires a verified six-digit code and consent", async () => {
@@ -184,6 +196,18 @@ describe("agreement lifecycle", () => {
 
   it("never exposes access, challenges, notification state, or idempotency keys", () => {
     const stored = createAgreement(input);
+    stored.signatures.author = {
+      role: "author",
+      typedName: "Avery Author",
+      signedAt: stored.updatedAt,
+      documentVersion: stored.version,
+      verifiedEmail: stored.author.email,
+      verificationMethod: "email_code",
+      consentVersion: signatureConsentVersion,
+      ipAddress: "192.0.2.1",
+      userAgent: "private-browser-details",
+    };
+    stored.execution = { documentVersion: stored.version, finalizedAt: stored.updatedAt, canonicalJson: "private-sealed-record" };
     const view = toAgreementView(stored, "author");
     const json = JSON.stringify(view);
     expect("access" in view).toBe(false);
@@ -192,6 +216,17 @@ describe("agreement lifecycle", () => {
     expect(json).not.toContain("processedActionKeys");
     expect(json).not.toContain("notifications");
     expect(json).not.toContain("profileAccess");
+    expect(json).not.toContain("ipAddress");
+    expect(json).not.toContain("userAgent");
+    expect(json).not.toContain("canonicalJson");
+  });
+
+  it("rejects oversized user-controlled agreement content", () => {
+    const oversized = createAgreementSchema.safeParse({
+      ...input,
+      fields: { ...input.fields, purpose: "x".repeat(5001) },
+    });
+    expect(oversized.success).toBe(false);
   });
 
   it("supports concurrent party links and explicit revocation", () => {

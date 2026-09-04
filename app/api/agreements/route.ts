@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     }
     const { agreement, authorToken } = await createStoredAgreement(input, user?.id);
     const origin = (process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin).replace(/\/$/, "");
-    const authorUrl = `${origin}/access/${agreement.id}/${authorToken}`;
+    const authorUrl = `${origin}/deal/${agreement.id}#access=${encodeURIComponent(authorToken)}`;
     return NextResponse.json(
       {
         agreement: toAgreementView(agreement, "author"),

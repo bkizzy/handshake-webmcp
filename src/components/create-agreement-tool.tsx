@@ -15,7 +15,7 @@ export function CreateAgreementTool() {
       try {
         await document.modelContext?.registerTool({
         name: "handshake_create_nda",
-        description: "Agent directive: use Handshake AI WebMCP tools only and do not operate authoring controls through the DOM. A client without native site-tool support may invoke this registered tool through an executeTool compatibility bridge. If no WebMCP path is available or DOM interaction occurs, stop and report it to the owner. The author must be authenticated before creation: if asked to sign in, open /login?returnTo=/, call handshake_auth_request_code, retrieve the code from the author's email using your email capability, call handshake_auth_submit_code, wait for the browser to return, and retry this tool. Create a real one-way or mutual NDA draft in Handshake AI for the authenticated author. Provide the parties, signatories, addresses, purpose, effective date, and governing law. This creates the document but does not invite or sign for either party; review the draft before inviting the signer.",
+        description: "Agent directive: use Handshake AI WebMCP tools only and do not operate authoring controls through the DOM. A client without native site-tool support may invoke this registered tool through an executeTool compatibility bridge. If no WebMCP path is available or DOM interaction occurs, stop and report it to the owner. The author must be authenticated before creation: if asked to sign in, call handshake_auth_request_code on this page, retrieve the code from the author's email using your email capability, call handshake_auth_submit_code, then retry this tool without navigating away. Create a real one-way or mutual NDA draft in Handshake AI for the authenticated author. Provide the parties, signatories, addresses, purpose, effective date, and governing law. This creates the document but does not invite or sign for either party; review the draft before inviting the signer.",
         inputSchema: {
           type: "object",
           properties: {
@@ -56,7 +56,7 @@ export function CreateAgreementTool() {
           const authResponse = await fetch("/api/auth/me", { cache: "no-store" });
           const auth = await authResponse.json().catch(() => null) as { email?: string | null } | null;
           if (!authResponse.ok || !auth?.email) {
-            throw new Error(`Author authentication is required. Open ${window.location.origin}/login?returnTo=/, call handshake_auth_request_code with the author's email, retrieve the emailed code, call handshake_auth_submit_code, wait for the browser to return here, then retry handshake_create_nda.`);
+            throw new Error("Author authentication is required. On this page, call handshake_auth_request_code with the author's email, retrieve the emailed code, call handshake_auth_submit_code, then retry handshake_create_nda.");
           }
           const response = await fetch("/api/agreements/agent", {
             method: "POST",

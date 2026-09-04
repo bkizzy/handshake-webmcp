@@ -16,7 +16,7 @@ export function apiError(error: unknown) {
       { status: 400 },
     );
   }
-  console.error(error);
+  console.error("Unhandled API error", error instanceof Error ? error.name : typeof error);
   return NextResponse.json(
     { error: { code: "server_error", message: "Something went wrong. Please try again." } },
     { status: 500 },

@@ -1,5 +1,6 @@
 import {
   actionRequiredEmailCopy,
+  approvalResetEmailCopy,
   completedEmailCopy,
   endedEmailCopy,
   invitationEmailCopy,
@@ -54,10 +55,10 @@ async function sendEmail(to: string, content: AgreementEmailContent, url?: strin
         text: renderText(content, url),
       }),
     });
-    if (!response.ok) console.error("Agreement email failed", response.status, await response.text());
+    if (!response.ok) console.error("Agreement email failed", response.status);
     return response.ok;
   } catch (error) {
-    console.error("Agreement email failed", error);
+    console.error("Agreement email failed", error instanceof Error ? error.name : "unknown_error");
     return false;
   }
 }
@@ -77,6 +78,10 @@ export function sendActionRequired(
   eventCount: number,
 ) {
   return sendEmail(agreement[role].email, actionRequiredEmailCopy({ title: agreement.title, eventCount }), url);
+}
+
+export function sendApprovalReset(agreement: StoredAgreement, role: PartyRole, url: string) {
+  return sendEmail(agreement[role].email, approvalResetEmailCopy({ title: agreement.title }), url);
 }
 
 export function sendSignatureReady(agreement: StoredAgreement, role: PartyRole, url: string) {

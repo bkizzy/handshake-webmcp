@@ -14,6 +14,7 @@ import { sealSignedAgreement } from "./seal";
 import type { ActorSource, PartyRole, StoredAgreement } from "./types";
 import {
   sendActionRequired,
+  sendApprovalReset,
   sendAgreementCompleted,
   sendAgreementEnded,
   sendReviewInvitation,
@@ -22,7 +23,7 @@ import {
 
 type Delivery = {
   role: PartyRole;
-  kind: "invitation" | "action_required" | "signature_ready" | "completed" | "ended";
+  kind: "invitation" | "action_required" | "approval_reset" | "signature_ready" | "completed" | "ended";
   email: string;
   url: string;
   throughSequence: number;
@@ -105,11 +106,15 @@ export async function processAgreementAction(
   const deliveries: Delivery[] = [];
   let invitation: { email: string; url?: string; delivered?: boolean } | undefined;
   const sequence = latestEventSequence(updated);
+  const approvalReset = body.action.type === "propose_redline"
+    && (current.status === "ready" || current.readiness.author || current.readiness.signer)
+    && !updated.readiness.author
+    && !updated.readiness.signer;
 
   if ((body.action.type === "invite" || body.action.type === "resend_invitation") && role === "author") {
     const issued = issueAgreementAccess(updated, "signer", { replace: true });
     updated = issued.agreement;
-    const url = `${origin}/access/${updated.id}/${issued.token}`;
+    const url = `${origin}/deal/${updated.id}#access=${encodeURIComponent(issued.token)}`;
     updated.notifications.signer.notifiedThrough = sequence;
     updated.notifications.signer.lastKind = "invitation";
     updated.notifications.signer.lastSentAt = new Date().toISOString();
@@ -126,7 +131,7 @@ export async function processAgreementAction(
     if (updated.status !== "draft") {
       const issued = issueAgreementAccess(updated, "signer", { replace: true });
       updated = issued.agreement;
-      const url = `${origin}/access/${updated.id}/${issued.token}`;
+      const url = `${origin}/deal/${updated.id}#access=${encodeURIComponent(issued.token)}`;
       updated.notifications.signer.notifiedThrough = sequence;
       updated.notifications.signer.lastKind = "invitation";
       updated.notifications.signer.lastSentAt = new Date().toISOString();
@@ -139,7 +144,7 @@ export async function processAgreementAction(
     for (const recipient of ["author", "signer"] as PartyRole[]) {
       const issued = issueAgreementAccess(updated, recipient);
       updated = issued.agreement;
-      const url = `${origin}/access/${updated.id}/${issued.token}`;
+      const url = `${origin}/deal/${updated.id}#access=${encodeURIComponent(issued.token)}`;
       updated.notifications[recipient].notifiedThrough = sequence;
       updated.notifications[recipient].lastKind = "completed";
       updated.notifications[recipient].lastSentAt = new Date().toISOString();
@@ -149,7 +154,7 @@ export async function processAgreementAction(
     const recipient = otherRole(role);
     const issued = issueAgreementAccess(updated, recipient);
     updated = issued.agreement;
-    const url = `${origin}/access/${updated.id}/${issued.token}`;
+    const url = `${origin}/deal/${updated.id}#access=${encodeURIComponent(issued.token)}`;
     updated.notifications[recipient].notifiedThrough = sequence;
     updated.notifications[recipient].lastKind = "ended";
     updated.notifications[recipient].lastSentAt = new Date().toISOString();
@@ -158,11 +163,11 @@ export async function processAgreementAction(
     const recipient = actionRecipient(body.action.type, role);
     if (recipient) {
       const notification = updated.notifications[recipient];
-      if (notification.acknowledgedThrough >= notification.notifiedThrough) {
+      if (approvalReset || notification.acknowledgedThrough >= notification.notifiedThrough) {
         const issued = issueAgreementAccess(updated, recipient);
         updated = issued.agreement;
-        const url = `${origin}/access/${updated.id}/${issued.token}`;
-        const kind = updated.status === "ready" ? "signature_ready" : "action_required";
+        const url = `${origin}/deal/${updated.id}#access=${encodeURIComponent(issued.token)}`;
+        const kind = approvalReset ? "approval_reset" : updated.status === "ready" ? "signature_ready" : "action_required";
         updated.notifications[recipient].notifiedThrough = sequence;
         updated.notifications[recipient].lastKind = kind;
         updated.notifications[recipient].lastSentAt = new Date().toISOString();
@@ -200,6 +205,7 @@ export async function processAgreementAction(
       ).length);
       delivered = await sendActionRequired(updated, delivery.role, delivery.url, count);
     }
+    if (delivery.kind === "approval_reset") delivered = await sendApprovalReset(updated, delivery.role, delivery.url);
     if (delivery.kind === "signature_ready") delivered = await sendSignatureReady(updated, delivery.role, delivery.url);
     if (delivery.kind === "completed") delivered = await sendAgreementCompleted(updated, delivery.role, delivery.url);
     if (delivery.kind === "ended") delivered = await sendAgreementEnded(updated, delivery.role, delivery.url);

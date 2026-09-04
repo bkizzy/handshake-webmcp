@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { Viewport } from "next";
 
 import "./globals.css";
+import { AuthTools } from "@/src/components/auth-tools";
 import { GlobalShortcut } from "@/src/components/global-shortcut";
 
 export const metadata: Metadata = {
@@ -15,7 +16,7 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" data-scroll-behavior="smooth">
-      <body><GlobalShortcut />{children}</body>
+      <body><AuthTools /><GlobalShortcut />{children}</body>
     </html>
   );
 }

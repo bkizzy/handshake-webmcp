@@ -58,6 +58,7 @@ import "./deal-workspace.css";
 type ActionResult = {
   agreement: AgreementView;
   invitation?: { email: string; url?: string; delivered: boolean };
+  notifications?: Array<{ role: PartyRole; kind: string; email: string; delivered: boolean }>;
   replayed?: boolean;
 };
 
@@ -120,7 +121,6 @@ export function DealWorkspace({ id }: { id: string }) {
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [sectionText, setSectionText] = useState("");
   const [draftFields, setDraftFields] = useState<AgreementFields | null>(null);
-  const [signing, setSigning] = useState(false);
   const [correcting, setCorrecting] = useState<PartyRole | null>(null);
   const [ending, setEnding] = useState<"decline" | "void" | null>(null);
   const [restoringVersion, setRestoringVersion] = useState<number | null>(null);
@@ -168,8 +168,21 @@ export function DealWorkspace({ id }: { id: string }) {
     if (announceRemote && previous && next.eventSequence > previous.eventSequence) {
       if (next.status !== previous.status) {
         if (next.status !== "signed") {
+          const approvalWasReset = next.status === "review"
+            && (previous.status === "ready" || previous.readiness.author || previous.readiness.signer)
+            && !next.readiness.author
+            && !next.readiness.signer;
           const kind: VisualEventKind = next.status === "ready" ? "approved" : next.status === "review" ? "review" : "update";
-          triggerVisualEvent(kind, next.status === "ready" ? "Approved and ready to sign" : next.status === "review" ? "Agreement moved to review" : "Agreement updated");
+          triggerVisualEvent(
+            kind,
+            approvalWasReset
+              ? "Agreement changed — approval required again"
+              : next.status === "ready"
+                ? "Approved and ready to sign"
+                : next.status === "review"
+                  ? "Agreement entered review"
+                  : "Agreement updated",
+          );
         }
       } else {
         triggerVisualEvent("update", "New agreement update received");
@@ -286,14 +299,31 @@ export function DealWorkspace({ id }: { id: string }) {
         } else if (action.type === "propose_redline") {
           const proposal = [...data.agreement.redlines].reverse().find((redline) => redline.status === "open" && targetKey(redline.target) === targetKey(action.target));
           if (proposal) setSelectedRedlineId(proposal.id);
-          triggerVisualEvent("proposal", "Proposed change sent", targetKey(action.target), proposal?.id);
+          const approvalWasReset = current.status === "ready" || current.readiness.author || current.readiness.signer;
+          triggerVisualEvent("proposal", approvalWasReset ? "New redline — approvals reset" : "Proposed change sent", targetKey(action.target), proposal?.id);
         }
-        else if (action.type === "invite") triggerVisualEvent("review", "Agreement moved to review");
+        else if (action.type === "invite") triggerVisualEvent("review", data.invitation?.delivered ? "Review started — invitation sent" : "Review started — email delivery failed");
+        else if (action.type === "resend_invitation") triggerVisualEvent("review", data.invitation?.delivered ? "Secure invitation resent" : "Invitation email delivery failed");
         else if (action.type === "mark_ready") triggerVisualEvent("approved", data.agreement.status === "ready" ? "Both approvals recorded — ready to sign" : "Your approval is recorded");
         else if (action.type === "sign") {
           if (data.agreement.status !== "signed") triggerVisualEvent("approved", "Signature recorded");
         }
-        else if (action.type === "restore_version") triggerVisualEvent("review", "Version restored for review");
+        else if (action.type === "restore_version") triggerVisualEvent("review", "Version restored — approvals reset");
+        else if (action.type === "update_participant") {
+          const invitationDelivery = data.notifications?.find((item) => item.kind === "invitation");
+          triggerVisualEvent(
+            "update",
+            invitationDelivery
+              ? invitationDelivery.delivered
+                ? "Signer updated — new invitation sent"
+                : "Signer updated — invitation delivery failed"
+              : `${roleLabel(action.role)} details updated`,
+          );
+        }
+        else if (action.type === "decline") triggerVisualEvent("reject", "Agreement declined");
+        else if (action.type === "void") triggerVisualEvent("reject", "Agreement voided");
+        else if (source === "agent" && action.type === "update_document_fields") triggerVisualEvent("update", "Draft details updated");
+        else if (source === "agent" && action.type === "update_draft_section") triggerVisualEvent("update", "Draft section updated");
       }
       setSaveState("saved");
       return data;
@@ -408,6 +438,10 @@ export function DealWorkspace({ id }: { id: string }) {
     openRedline(next.id);
   }
 
+  function jumpToSignature() {
+    document.getElementById(`signature-action-${agreementRef.current?.viewerRole}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   if (loading || !accessReady) return <div className="loading-screen"><LoaderCircle className="spin" size={25} /> {agreementCopy.openingWorkspace}</div>;
   if (!agreement) return <div className="error-screen"><LockKeyhole size={27} /><h1>{agreementCopy.accessDeniedTitle}</h1><p>{error}</p><a href="/recover">Request a fresh secure link</a></div>;
 
@@ -451,7 +485,7 @@ export function DealWorkspace({ id }: { id: string }) {
         <div className="primary-action">
           {agreement.permissions.canInvite && <button className="button-primary" disabled={working} onClick={() => void performAction({ type: "invite" })}><Send size={16} /> Invite to review</button>}
           {agreement.permissions.canMarkReady && <button className="button-primary" disabled={working} onClick={() => void performAction({ type: "mark_ready" })}><CheckCircle2 size={16} /> Approve version</button>}
-          {agreement.permissions.canSign && <button className="button-primary" onClick={() => setSigning(true)}><PenLine size={16} /> Review & sign</button>}
+          {agreement.permissions.canSign && <button className="button-primary" onClick={jumpToSignature}><PenLine size={16} /> Review & sign</button>}
           {agreement.status === "ready" && !agreement.permissions.canSign && <div className="waiting-state"><Clock3 size={15} /> Waiting for other signature</div>}
           {agreement.status === "signed" && <span className="completed-state"><CheckCircle2 size={16} /> Complete</span>}
         </div>
@@ -464,6 +498,7 @@ export function DealWorkspace({ id }: { id: string }) {
       {error && <div className="error-banner" role="alert"><span>{error}</span><button onClick={() => setError("")} aria-label="Dismiss"><X size={15} /></button></div>}
       {invitation && agreement.status === "review" && <div className="invite-banner"><Mail size={18} /><div><b>{invitation.delivered ? "Invitation sent" : "Invitation could not be delivered"} to {invitation.email}</b><span>{invitation.delivered ? "The secure email link opens the signer workspace." : "Check the address or resend from More after email is available."}</span></div></div>}
       {notice && <div className="toast"><Check size={15} /> {notice}</div>}
+      {agreement.permissions.canSign && <button className="sign-here-tab" onClick={jumpToSignature}><PenLine size={15} /> Sign</button>}
 
       <div className="workspace-grid">
         <section className="document-column">
@@ -494,8 +529,9 @@ export function DealWorkspace({ id }: { id: string }) {
                 </section>;
               })}</div>
 
-              <div className="signature-block">{(["author", "signer"] as PartyRole[]).map((role) => { const signature = agreement.signatures[role]; const party = agreement[role]; return <div key={role}><p>{roleLabel(role)}</p><div className={signature ? "signature-line signed" : "signature-line"}>{signature ? signature.typedName : party.signatoryName}</div><b>{party.signatoryName}</b><span>{party.signatoryTitle}, {party.legalName}</span>{signature && <small>Signed {formatDate(signature.signedAt)} · Email verified · Version {signature.documentVersion}</small>}</div>; })}</div>
               <div className="appendices">{visibleKnownInformationRoles(agreement).map((role, index) => { const field = knownInformationField(role); const canEditAppendix = agreement.permissions.canEditDraft && agreement.kind === "mutual" && role === "author"; return <section className="agreement-appendix" key={role}><p className="appendix-label">Appendix {String.fromCharCode(65 + index)}</p><h2>Previously Known Information of {agreement[role].legalName}</h2><p className="appendix-help">Information this party knew lawfully and without restriction before disclosure under this agreement.</p>{canEditAppendix && draftFields ? <label className="field-label">Appendix entries<textarea className="field-textarea" value={draftFields[field]} onChange={(event) => setDraftFields({ ...draftFields, [field]: event.target.value })} /></label> : <dl><TermDisplay agreement={agreement} target={{ kind: "field", id: field }} label="Disclosed information" value={agreement.fields[field] || "None disclosed."} openRedlines={openRedlines} freshRedlines={freshRedlines} visualTarget={visualEvent?.target} onSuggest={suggest} onSelectRedline={openRedline} canSuggest={agreement.permissions.canRedline && agreement.viewerRole === role} /></dl>}</section>; })}</div>
+              <div className="signature-block">{(["author", "signer"] as PartyRole[]).map((role) => { const signature = agreement.signatures[role]; const party = agreement[role]; return <div key={role}><p>{roleLabel(role)}</p><div className={signature ? "signature-line signed" : "signature-line"}>{signature ? signature.typedName : party.signatoryName}</div><b>{party.signatoryName}</b><span>{party.signatoryTitle}, {party.legalName}</span>{signature && <small>Signed {formatDate(signature.signedAt)} · Email verified · Version {signature.documentVersion}</small>}</div>; })}</div>
+              {agreement.permissions.canSign && <InlineSignaturePanel id={id} role={agreement.viewerRole} email={viewerParty.email} partyName={viewerParty.signatoryName} version={agreement.version} working={working} authHeaders={authHeaders} onSign={(typedName, code) => void performAction({ type: "sign", typedName, code, consentVersion: signatureConsentVersion })} />}
               {agreement.status === "signed" && <div className="execution-seal"><ShieldCheck size={18} /><div><b>SHA-256 execution seal</b><code>{agreement.execution?.sealHash ?? agreement.execution?.sha256}</code></div><button onClick={() => void navigator.clipboard.writeText(agreement.execution?.sealHash ?? agreement.execution?.sha256 ?? "")}>Copy</button></div>}
             </article>
           )}
@@ -510,7 +546,6 @@ export function DealWorkspace({ id }: { id: string }) {
       </div>
 
       {proposedTarget && <RedlineDialog target={proposedTarget} working={working} onClose={() => setProposedTarget(null)} onSubmit={(proposedValue, rationale) => void performAction({ type: "propose_redline", target: proposedTarget.target, proposedValue, rationale }).then(() => { setProposedTarget(null); setTab("redlines"); })} />}
-      {signing && <SignDialog id={id} email={viewerParty.email} partyName={viewerParty.signatoryName} version={agreement.version} working={working} authHeaders={authHeaders} onClose={() => setSigning(false)} onSign={(typedName, code) => void performAction({ type: "sign", typedName, code, consentVersion: signatureConsentVersion }).then(() => setSigning(false))} />}
       {correcting && <ParticipantDialog role={correcting} participant={agreement[correcting]} working={working} onClose={() => setCorrecting(null)} onSubmit={(participant) => void performAction({ type: "update_participant", role: correcting, participant }).then(() => setCorrecting(null))} />}
       {ending && <EndAgreementDialog kind={ending} working={working} onClose={() => setEnding(null)} onSubmit={(reason) => void performAction({ type: ending, reason }).then(() => setEnding(null))} />}
       {restoringVersion !== null && <RestoreVersionDialog version={restoringVersion} working={working} onClose={() => setRestoringVersion(null)} onRestore={() => void performAction({ type: "restore_version", version: restoringVersion }).then(() => setRestoringVersion(null))} />}
@@ -553,7 +588,7 @@ function RedlineDialog({ target, working, onClose, onSubmit }: { target: Propose
   return <div className="dialog-backdrop" role="presentation"><div className="dialog" role="dialog" aria-modal="true" aria-labelledby="redline-title"><button className="dialog-close" onClick={onClose} aria-label="Close"><X size={18} /></button><p className="eyebrow">Propose a change</p><h2 id="redline-title">{target.label}</h2><p className="dialog-help">The other party can accept, reject, or counter your proposed text.</p><label className="field-label">Proposed text<textarea className="field-textarea proposal-text" value={value} onChange={(event) => setValue(event.target.value)} autoFocus /></label><label className="field-label">Reason for change <span>(optional)</span><input className="field-input" placeholder="Give the other party useful context" value={rationale} onChange={(event) => setRationale(event.target.value)} /></label><div className="dialog-actions"><button className="button-secondary" onClick={onClose}>Cancel</button><button className="button-primary" disabled={working || value === target.currentValue || !value.trim()} onClick={() => onSubmit(value, rationale)}><Send size={15} /> Send proposal</button></div></div></div>;
 }
 
-function SignDialog({ id, email, partyName, version, working, authHeaders, onClose, onSign }: { id: string; email: string; partyName: string; version: number; working: boolean; authHeaders: (headers?: HeadersInit) => Headers; onClose: () => void; onSign: (typedName: string, code: string) => void }) {
+function InlineSignaturePanel({ id, role, email, partyName, version, working, authHeaders, onSign }: { id: string; role: PartyRole; email: string; partyName: string; version: number; working: boolean; authHeaders: (headers?: HeadersInit) => Headers; onSign: (typedName: string, code: string) => void }) {
   const [name, setName] = useState(partyName);
   const [confirmed, setConfirmed] = useState(false);
   const [code, setCode] = useState("");
@@ -566,7 +601,7 @@ function SignDialog({ id, email, partyName, version, working, authHeaders, onClo
     setCodeSent(true);
     setMessage(data.delivered ? `Code sent to ${email}` : "The code could not be delivered. Try again shortly.");
   }
-  return <div className="dialog-backdrop" role="presentation"><div className="dialog sign-dialog" role="dialog" aria-modal="true" aria-labelledby="sign-title"><button className="dialog-close" onClick={onClose} aria-label="Close"><X size={18} /></button><span className="sign-icon"><PenLine size={22} /></span><h2 id="sign-title">Sign version {version}</h2><p className="dialog-help">{agreementCopy.signatureCodeHelp}</p><label className="field-label">Full legal name<input className="field-input signature-input" value={name} onChange={(event) => setName(event.target.value)} /></label>{!codeSent ? <button className="button-secondary code-button" onClick={() => void requestCode()}><Mail size={15} /> Email my signing code</button> : <label className="field-label">Six-digit code<input className="field-input code-input" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} /></label>}{message && <p className="form-message">{message}</p>}<label className="confirm-row"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} /><span>{agreementCopy.signingConsent}</span></label><div className="dialog-actions"><button className="button-secondary" onClick={onClose}>Cancel</button><button className="button-primary" disabled={working || !confirmed || !name.trim() || code.length !== 6} onClick={() => onSign(name, code)}><PenLine size={15} /> Sign agreement</button></div></div></div>;
+  return <section className="inline-signature" id={`signature-action-${role}`} aria-labelledby="sign-title"><div className="inline-signature-heading"><span className="sign-icon"><PenLine size={22} /></span><div><p>Signature required</p><h2 id="sign-title">Sign version {version}</h2></div></div><p className="inline-signature-help">Review the complete agreement above, then verify your email and sign below. {agreementCopy.signatureCodeHelp}</p><label className="field-label">Full legal name<input className="field-input signature-input" value={name} onChange={(event) => setName(event.target.value)} /></label>{!codeSent ? <button className="button-secondary code-button" onClick={() => void requestCode()}><Mail size={15} /> Email my signing code</button> : <label className="field-label">Six-digit code<input className="field-input code-input" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} /></label>}{message && <p className="form-message">{message}</p>}<label className="confirm-row"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} /><span>{agreementCopy.signingConsent}</span></label><button className="button-primary sign-submit" disabled={working || !confirmed || !name.trim() || code.length !== 6} onClick={() => onSign(name, code)}><PenLine size={15} /> Sign agreement</button></section>;
 }
 
 function ParticipantDialog({ role, participant, working, onClose, onSubmit }: { role: PartyRole; participant: AgreementView[PartyRole]; working: boolean; onClose: () => void; onSubmit: (participant: Partial<AgreementView[PartyRole]>) => void }) {

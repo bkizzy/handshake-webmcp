@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, KeyRound, LoaderCircle, Mail } from "lucide-react";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 
 import { createSupabaseBrowserClient } from "@/src/lib/supabase/browser";
 
@@ -12,49 +12,6 @@ export function LoginForm({ returnTo = "/dashboard" }: { returnTo?: string }) {
   const [code, setCode] = useState("");
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (typeof document.modelContext?.registerTool !== "function") return;
-    const authClient = client;
-    if (!authClient) return;
-    let active = true;
-    const controller = new AbortController();
-    const register = async () => {
-      await document.modelContext?.registerTool({
-        name: "handshake_auth_request_code",
-        description: "Request a one-time Handshake AI sign-in code for an author or signer. Handshake AI sends the code by email; the agent must retrieve it using its own email capability and then submit it with handshake_auth_submit_code. Handshake AI never reads the inbox.",
-        inputSchema: { type: "object", properties: { email: { type: "string", description: "Email address to receive the one-time code." } }, required: ["email"], additionalProperties: false },
-        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true, untrustedContentHint: false },
-        execute: async (input) => {
-          const emailValue = typeof (input as Record<string, unknown>)?.email === "string" ? (input as Record<string, string>).email : "";
-          const response = await fetch("/api/auth/request-code", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: emailValue }) });
-          const data = await response.json().catch(() => null) as { error?: string } | null;
-          if (!response.ok) throw new Error(data?.error ?? "Could not send the sign-in code.");
-          return { content: [{ type: "text", text: `A one-time code was sent to ${emailValue}. Retrieve it from the owner's email and call handshake_auth_submit_code.` }], structuredContent: { sent: true, email: emailValue } };
-        },
-      }, { signal: controller.signal });
-      await document.modelContext?.registerTool({
-        name: "handshake_auth_submit_code",
-        description: "Complete Handshake AI email-code authentication after the agent has retrieved the code from its own email capability. This tool does not access email. Returns the destination route after authentication.",
-        inputSchema: { type: "object", properties: { email: { type: "string" }, code: { type: "string", description: "The six- or eight-digit code from the email." }, returnTo: { type: "string", description: "Optional Handshake AI route to open after authentication." } }, required: ["email", "code"], additionalProperties: false },
-        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false, untrustedContentHint: false },
-        execute: async (input) => {
-          const values = (input ?? {}) as Record<string, unknown>;
-          const emailValue = typeof values.email === "string" ? values.email : "";
-          const codeValue = typeof values.code === "string" ? values.code.replace(/\D/g, "") : "";
-          if (codeValue.length !== 6 && codeValue.length !== 8) throw new Error("The sign-in code must be six or eight digits.");
-          const { error: authError } = await authClient.auth.verifyOtp({ email: emailValue, token: codeValue, type: "email" });
-          if (authError) throw new Error(authError.message);
-          const destination = typeof values.returnTo === "string" && values.returnTo.startsWith("/") && !values.returnTo.startsWith("//") ? values.returnTo : returnTo;
-          const result = { content: [{ type: "text" as const, text: `Authenticated ${emailValue}. Opening ${destination}.` }], structuredContent: { authenticated: true, returnTo: destination } };
-          window.setTimeout(() => { if (active) window.location.assign(destination); }, 100);
-          return result;
-        },
-      }, { signal: controller.signal });
-    };
-    void register().catch((registrationError) => { if (!controller.signal.aborted) console.error("WebMCP auth tool registration failed", registrationError); });
-    return () => { active = false; controller.abort(); };
-  }, [client, returnTo]);
 
   async function sendCode(event: FormEvent) {
     event.preventDefault();

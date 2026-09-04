@@ -1,10 +1,9 @@
 "use client";
 
 import { Bot, Check, CircleAlert, Copy, RefreshCw, ShieldCheck, Wrench } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { Brand } from "@/src/components/brand";
+import { SiteHeader } from "@/src/components/site-header";
 
 type Phase = "checking" | "unsupported" | "registering" | "ready" | "error";
 
@@ -24,7 +23,7 @@ type Invocation = {
 
 const toolNames = ["handshake_webmcp_verify", "handshake_webmcp_echo"];
 const productToolExamples = ["handshake_create_nda", "handshake_retrieve_contract", "handshake_wait_for_update", "handshake_get_certificate", "handshake_verify_seal"];
-const testPrompt = "Use the Handshake AI site tools on this page. Call handshake_webmcp_verify, then call handshake_webmcp_echo with the message ‘WebMCP is working’.";
+const testPrompt = "Use the Mutual Assent AI site tools on this page. Call handshake_webmcp_verify, then call handshake_webmcp_echo with the message ‘WebMCP is working’.";
 
 function result(message: string, structuredContent: Record<string, unknown>): WebMcpToolResult {
   return { content: [{ type: "text", text: message }], structuredContent };
@@ -84,11 +83,11 @@ export function WebMcpVerifier() {
         await Promise.all([
           modelContext!.registerTool({
             name: "handshake_webmcp_verify",
-            description: "Verify that Handshake AI WebMCP site tools can be invoked on the current top-level page. This is a read-only diagnostic and does not access agreement data.",
+            description: "Verify that Mutual Assent AI WebMCP site tools can be invoked on the current top-level page. This is a read-only diagnostic and does not access agreement data.",
             inputSchema: { type: "object", properties: {}, additionalProperties: false },
             annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false, untrustedContentHint: false },
             execute: async () => {
-              const message = "Handshake AI WebMCP registration and invocation are working.";
+              const message = "Mutual Assent AI WebMCP registration and invocation are working.";
               recordInvocation("handshake_webmcp_verify", message);
               return result(message, {
                 ok: true,
@@ -100,7 +99,7 @@ export function WebMcpVerifier() {
           }, { signal: controller.signal }),
           modelContext!.registerTool({
             name: "handshake_webmcp_echo",
-            description: "Echo a short test message to prove that an agent can pass structured input to a Handshake AI WebMCP tool. This changes only the diagnostic display on this page.",
+            description: "Echo a short test message to prove that an agent can pass structured input to a Mutual Assent AI WebMCP tool. This changes only the diagnostic display on this page.",
             inputSchema: {
               type: "object",
               properties: { message: { type: "string", description: "A short non-sensitive test message." } },
@@ -157,12 +156,7 @@ export function WebMcpVerifier() {
 
   return (
     <main className="verify-page">
-      <header>
-        <div className="app-shell header-inner">
-          <Brand />
-          <Link href="/" className="back-link">Back to Handshake AI</Link>
-        </div>
-      </header>
+      <SiteHeader />
 
       <section className="app-shell intro">
         <div className={ready ? "status-icon ready" : unsupported || diagnostic.phase === "error" ? "status-icon blocked" : "status-icon checking"}>
@@ -202,45 +196,42 @@ export function WebMcpVerifier() {
       {unsupported && (
         <section className="app-shell setup-card">
           <h2>Open this page in a site-tools-capable browser</h2>
-          <p>The page cannot enable WebMCP itself. Open it in the Codex built-in browser with a model/session that exposes site tools, then reload. There is no Handshake AI permission toggle to change.</p>
+          <p>The page cannot enable WebMCP itself. Open it in the Codex built-in browser with a model/session that exposes site tools, then reload. There is no Mutual Assent AI permission toggle to change.</p>
         </section>
       )}
 
       <style jsx>{`
         .verify-page { min-height: 100vh; padding-bottom: 90px; background: var(--canvas); }
-        header { height: 72px; display: flex; align-items: center; background: white; border-bottom: 1px solid var(--line); }
-        .header-inner { display: flex; align-items: center; justify-content: space-between; }
-        .back-link { color: #536077; text-decoration: none; font-size: 13px; font-weight: 650; }
-        .intro { padding-top: 70px; text-align: center; }
+        .intro { padding-top: 64px; text-align: center; }
         .status-icon { width: 56px; height: 56px; margin: 0 auto 22px; display: grid; place-items: center; border-radius: 50%; }
         .status-icon.ready { color: var(--green); background: var(--green-soft); }
         .status-icon.blocked { color: var(--amber); background: var(--amber-soft); }
         .status-icon.checking { color: var(--blue); background: var(--blue-soft); }
         h1 { margin: 13px 0 0; color: #172033; font-size: clamp(38px, 5vw, 58px); line-height: 1.05; letter-spacing: -.05em; }
-        .lede { max-width: 650px; margin: 18px auto 0; color: #687287; font-size: 17px; }
-        .diagnostic-grid { margin-top: 52px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .card, .invocation-card, .setup-card { padding: 28px; background: white; border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-sm); }
+        .lede { max-width: 650px; margin: 18px auto 0; color: #687287; font-size: 18px; line-height: 1.55; }
+        .diagnostic-grid { margin-top: 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .card, .invocation-card, .setup-card { padding: 32px; background: white; border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-sm); }
         .card-heading { display: flex; align-items: flex-start; gap: 12px; color: var(--blue); }
-        .card-heading h2, .invocation-card h2, .setup-card h2 { margin: 0; color: #263147; font-size: 18px; }
-        .card-heading p { margin: 3px 0 0; color: #788295; font-size: 13px; }
+        .card-heading h2, .invocation-card h2, .setup-card h2 { margin: 0; color: #263147; font-size: 20px; }
+        .card-heading p { margin: 4px 0 0; color: #788295; font-size: 15px; line-height: 1.45; }
         ul { padding: 0; margin: 24px 0; list-style: none; border-top: 1px solid var(--soft-line); }
         .checks-card :global(.button-secondary) { width: 100%; }
         .tools-card { display: flex; flex-direction: column; }
-        .tools-card > code { margin-top: 14px; padding: 12px 13px; display: flex; justify-content: space-between; gap: 12px; color: #344057; background: #f7f9fc; border: 1px solid var(--soft-line); border-radius: 8px; font-size: 12px; }
+        .tools-card > code { margin-top: 16px; padding: 14px 16px; display: flex; justify-content: space-between; gap: 12px; color: #344057; background: #f7f9fc; border: 1px solid var(--soft-line); border-radius: 8px; font-size: 13px; }
         .tools-card > code span { color: ${ready ? "var(--green)" : "#8a93a3"}; font-family: Inter, sans-serif; font-weight: 700; }
-        .context-note { margin: 15px 0 0; color: #778296; font-size: 10px; line-height: 1.55; }
-        .prompt-box { margin-top: 20px; padding: 17px; background: #17213a; color: white; border-radius: 10px; }
-        .prompt-box > span { color: #9bb6ff; font-size: 11px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
-        .prompt-box p { margin: 9px 0 14px; color: #e7ecf6; font-size: 13px; line-height: 1.55; }
-        .prompt-box button { padding: 0; display: inline-flex; align-items: center; gap: 6px; color: white; background: transparent; border: 0; font-size: 12px; font-weight: 700; cursor: pointer; }
-        .invocation-card { margin-top: 20px; display: flex; align-items: flex-start; gap: 12px; color: var(--blue); }
-        .invocation-card p { margin: 6px 0 0; color: #687287; }
-        .invocation-card code { color: #344057; font-size: 12px; }
-        .setup-card { margin-top: 20px; border-color: #ecd7aa; background: #fffbf1; }
-        .setup-card p { margin: 14px 0 0; color: #7a6b4e; font-size: 12px; }
+        .context-note { margin: 16px 0 0; color: #69758a; font-size: 14px; line-height: 1.6; }
+        .prompt-box { margin-top: 24px; padding: 20px; background: #17213a; color: white; border-radius: 10px; }
+        .prompt-box > span { color: #9bb6ff; font-size: 12px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+        .prompt-box p { margin: 10px 0 16px; color: #e7ecf6; font-size: 15px; line-height: 1.6; }
+        .prompt-box button { min-height: 44px; padding: 0 4px; display: inline-flex; align-items: center; gap: 7px; color: white; background: transparent; border: 0; font-size: 14px; font-weight: 700; cursor: pointer; }
+        .invocation-card { margin-top: 24px; display: flex; align-items: flex-start; gap: 12px; color: var(--blue); }
+        .invocation-card p { margin: 8px 0 0; color: #687287; font-size: 15px; line-height: 1.5; }
+        .invocation-card code { color: #344057; font-size: 13px; }
+        .setup-card { margin-top: 24px; border-color: #ecd7aa; background: #fffbf1; }
+        .setup-card p { margin: 14px 0 0; color: #7a6b4e; font-size: 15px; line-height: 1.55; }
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        @media (max-width: 760px) { .diagnostic-grid { grid-template-columns: 1fr; } .intro { padding-top: 52px; } .card, .invocation-card, .setup-card { padding: 22px; } }
+        @media (max-width: 760px) { .diagnostic-grid { grid-template-columns: 1fr; } .intro { padding-top: 48px; } .card, .invocation-card, .setup-card { padding: 24px; } }
       `}</style>
     </main>
   );
@@ -248,11 +239,11 @@ export function WebMcpVerifier() {
 
 function CheckRow({ label, passed, pending = false }: { label: string; passed: boolean; pending?: boolean }) {
   return <li><span className={passed ? "check passed" : pending ? "check pending" : "check failed"}>{passed ? <Check size={13} /> : pending ? "…" : "×"}</span><span>{label}</span><b>{passed ? "Pass" : pending ? "Checking" : "Not detected"}</b><style jsx>{`
-    li { min-height: 45px; display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 8px; border-bottom: 1px solid var(--soft-line); color: #48546a; font-size: 13px; }
+    li { min-height: 48px; display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 8px; border-bottom: 1px solid var(--soft-line); color: #48546a; font-size: 14px; }
     .check { width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; font-size: 13px; font-weight: 800; }
     .passed { color: var(--green); background: var(--green-soft); }
     .pending { color: var(--blue); background: var(--blue-soft); }
     .failed { color: #8b94a3; background: #eef1f5; }
-    b { color: ${passed ? "var(--green)" : pending ? "var(--blue)" : "#8b94a3"}; font-size: 11px; }
+    b { color: ${passed ? "var(--green)" : pending ? "var(--blue)" : "#8b94a3"}; font-size: 12px; }
   `}</style></li>;
 }

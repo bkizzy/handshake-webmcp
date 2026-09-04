@@ -4,6 +4,7 @@ import { CreditCard, FileText, LogOut } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { authChangedEvent } from "./auth-tools";
 import { Brand } from "./brand";
 
 export function SiteHeader({ showStartAgreement = true }: { showStartAgreement?: boolean }) {
@@ -11,11 +12,13 @@ export function SiteHeader({ showStartAgreement = true }: { showStartAgreement?:
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetch("/api/auth/me", { signal: controller.signal, cache: "no-store" })
-      .then((response) => response.json())
-      .then((data) => setEmail(typeof data.email === "string" ? data.email : ""))
-      .catch(() => undefined);
-    return () => controller.abort();
+    const refreshAccount = () => void fetch("/api/auth/me", { signal: controller.signal, cache: "no-store" })
+        .then((response) => response.json())
+        .then((data) => setEmail(typeof data.email === "string" ? data.email : ""))
+        .catch(() => undefined);
+    refreshAccount();
+    window.addEventListener(authChangedEvent, refreshAccount);
+    return () => { controller.abort(); window.removeEventListener(authChangedEvent, refreshAccount); };
   }, []);
 
   return (
