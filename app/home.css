@@ -9,7 +9,6 @@
 .home-page .hero-actions .button-primary, .home-page .hero-actions .button-secondary { min-height: 52px; padding-left: 24px; padding-right: 24px; }
 .home-page .hero-proof { margin: 18px 0 0; display: flex; align-items: center; gap: 6px; color: #667085; font-size: 14px; font-weight: 600; }
 .home-page .hero-proof svg { color: var(--green); }
-.home-page .beta-risk { margin: 8px 0 0; color: #7a5415; font-size: 13px; }
 .home-page .agent-prompt { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin: 0 0 40px; padding: 20px 24px; border: 1px solid var(--line); border-radius: 12px; background: white; box-shadow: var(--shadow-sm); }
 .home-page .agent-prompt > div { min-width: 0; }
 .home-page .agent-prompt p { margin: 0 0 8px; color: #1f2937; font-size: 16px; font-weight: 700; }
