@@ -13,6 +13,10 @@ export type AgreementTemplate = {
   id: string;
   name: string;
   version: string;
+  sourceUrl?: string;
+  license?: string;
+  licenseUrl?: string;
+  adapted?: boolean;
 };
 
 export type Party = {

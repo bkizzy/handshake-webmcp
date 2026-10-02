@@ -9,6 +9,7 @@
 .home-page .hero-actions .button-primary, .home-page .hero-actions .button-secondary { min-height: 52px; padding-left: 24px; padding-right: 24px; }
 .home-page .hero-proof { margin: 18px 0 0; display: flex; align-items: center; gap: 6px; color: #667085; font-size: 14px; font-weight: 600; }
 .home-page .hero-proof svg { color: var(--green); }
+.home-page .beta-risk { margin: 8px 0 0; color: #7a5415; font-size: 13px; }
 .home-page .agent-prompt { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin: 0 0 40px; padding: 20px 24px; border: 1px solid var(--line); border-radius: 12px; background: white; box-shadow: var(--shadow-sm); }
 .home-page .agent-prompt > div { min-width: 0; }
 .home-page .agent-prompt p { margin: 0 0 8px; color: #1f2937; font-size: 16px; font-weight: 700; }
@@ -33,7 +34,6 @@
 .home-page .closing h2 { margin-top: 10px; color: white; font-size: clamp(34px, 4vw, 48px); }
 .home-page .closing .eyebrow { color: #b9c9ff; }
 .home-page .closing .button-primary { flex: 0 0 auto; background: white; color: #2457d6; }
-.home-page footer { min-height: 90px; display: flex; align-items: center; justify-content: space-between; color: #7a8495; font-size: 14px; }
 .home-page .hero-copy, .home-page .scene { animation: home-enter 520ms cubic-bezier(.2,.75,.25,1) both; }
 .home-page .scene { animation-delay: 90ms; }
 .home-page .steps article { transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease; }
@@ -62,5 +62,4 @@
   .home-page .trust-strip .app-shell { padding: 20px 0; flex-direction: column; align-items: flex-start; gap: 12px; }
   .home-page .how { padding-top: 80px; padding-bottom: 80px; }
   .home-page .closing-inner { align-items: flex-start; flex-direction: column; }
-  .home-page footer { align-items: flex-start; justify-content: center; flex-direction: column; gap: 3px; }
 }

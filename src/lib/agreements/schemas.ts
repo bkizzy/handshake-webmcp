@@ -9,6 +9,7 @@ const partySchema = z.object({
 });
 
 export const createAgreementSchema = z.object({
+  termsAccepted: z.literal(true, { error: "Accept the Terms and beta risk notice before creating an agreement." }),
   title: z.string().trim().min(1).max(200),
   kind: z.enum(["one-way", "mutual"]),
   author: partySchema,
@@ -27,6 +28,10 @@ export const createAgreementSchema = z.object({
     authorPreviouslyKnownInformation: fields.authorPreviouslyKnownInformation || "None disclosed.",
     signerPreviouslyKnownInformation: fields.signerPreviouslyKnownInformation || fields.preExistingMaterials || "None disclosed.",
   })),
+}).transform((value) => {
+  const input = { ...value };
+  delete (input as Partial<typeof value>).termsAccepted;
+  return input;
 });
 
 const redlineTargetSchema = z.discriminatedUnion("kind", [

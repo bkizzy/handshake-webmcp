@@ -7,7 +7,7 @@ export function CopyAgentPromptButton({ prompt, disabled = false }: { prompt: st
   const [copied, setCopied] = useState(false);
 
   async function copyPrompt() {
-    const resolvedPrompt = prompt.replace("{url}", "https://mutualassent.site");
+    const resolvedPrompt = prompt.replace("{url}", "https://mutualassent.com");
     await navigator.clipboard.writeText(resolvedPrompt);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2200);

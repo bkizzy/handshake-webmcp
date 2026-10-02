@@ -130,6 +130,11 @@ export async function buildAgreementPdf(agreement: StoredAgreement) {
     for (const line of knownInformationLines(agreement.fields[knownInformationField(role)])) paragraph(`- ${line}`, { indent: 18 });
   }
 
+  if (agreement.template.sourceUrl) {
+    heading("Source and License", 1);
+    paragraph(`Adapted from the Common Paper Mutual Non-Disclosure Agreement Version 1.0 (${agreement.template.sourceUrl}), used under ${agreement.template.license ?? "CC BY 4.0"} (${agreement.template.licenseUrl ?? "https://creativecommons.org/licenses/by/4.0/"}). Common Paper is not affiliated with or responsible for Mutual Assent AI. The agreement may contain modifications made by its parties.`, { size: 8.5 });
+  }
+
   if (agreement.status === "signed" && agreement.execution?.sealHash) {
     ensure(76);
     y -= 10;
@@ -141,7 +146,7 @@ export async function buildAgreementPdf(agreement: StoredAgreement) {
 
   pdf.setTitle(agreement.title);
   pdf.setSubject(agreement.template.name);
-  pdf.setCreator("Handshake AI");
-  pdf.setProducer("Handshake AI");
+  pdf.setCreator("Mutual Assent AI");
+  pdf.setProducer("Mutual Assent AI");
   return pdf.save();
 }

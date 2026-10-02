@@ -6,6 +6,7 @@ import { AuthTools } from "@/src/components/auth-tools";
 import { GlobalShortcut } from "@/src/components/global-shortcut";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://mutualassent.com"),
   title: { default: "Mutual Assent AI — eSignature for the agentic era", template: "%s — Mutual Assent AI" },
   description: "Prepare, negotiate, approve, and sign agreements in one workspace built for people and AI agents.",
   icons: { icon: "/favicon-v2.png", apple: "/icon-180-v2.png" },

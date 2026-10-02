@@ -4,6 +4,18 @@ import { type NextRequest, NextResponse } from "next/server";
 import { hasSupabasePublicConfig } from "@/src/lib/supabase/config";
 
 export async function proxy(request: NextRequest) {
+  const hostname = (request.headers.get("x-forwarded-host")
+    || request.headers.get("host")
+    || request.nextUrl.hostname)
+    .split(":")[0]
+    .toLowerCase();
+  if (hostname === "mutualassent.site" || hostname.endsWith(".mutualassent.site")) {
+    const canonicalUrl = request.nextUrl.clone();
+    canonicalUrl.protocol = "https";
+    canonicalUrl.hostname = "mutualassent.com";
+    canonicalUrl.port = "";
+    return NextResponse.redirect(canonicalUrl, 308);
+  }
   let response = NextResponse.next({ request });
   if (!hasSupabasePublicConfig()) return response;
 

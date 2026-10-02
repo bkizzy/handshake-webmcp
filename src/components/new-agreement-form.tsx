@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
 type FormState = {
+  termsAccepted: boolean;
   title: string;
   kind: "one-way" | "mutual";
   purpose: string;
@@ -23,6 +24,7 @@ type FormState = {
 };
 
 const initialState: FormState = {
+  termsAccepted: false,
   title: "Mutual NDA",
   kind: "mutual",
   purpose: "evaluating a potential business relationship",
@@ -59,6 +61,7 @@ export function NewAgreementForm({ authorEmail }: { authorEmail: string }) {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
+          termsAccepted: form.termsAccepted,
           title: form.title,
           kind: form.kind,
           author: {
@@ -160,6 +163,7 @@ export function NewAgreementForm({ authorEmail }: { authorEmail: string }) {
       </section>
 
       <div className="form-footer">
+        <label className="terms-consent"><input type="checkbox" checked={form.termsAccepted} onChange={(event) => update("termsAccepted", event.target.checked)} required /><span>I have read and agree to the <a href="/terms" target="_blank">Terms</a> and <a href="/privacy" target="_blank">Privacy Notice</a>. I understand this is free beta software, provided as-is, and I use it at my own risk.</span></label>
         <div className="submit-area">
           {error && <p role="alert">{error}</p>}
           <button className="button-primary" disabled={submitting}>{submitting ? "Creating…" : "Create draft"}<ArrowRight size={17} /></button>
@@ -182,7 +186,10 @@ export function NewAgreementForm({ authorEmail }: { authorEmail: string }) {
         .kind-card span { display: grid; gap: 3px; }
         .kind-card b { color: #303b51; font-size: 15px; }
         .kind-card small { color: #697488; font-size: 14px; line-height: 1.45; }
-        .form-footer { padding: 28px 39px; display: flex; align-items: center; justify-content: flex-end; gap: 28px; background: #fbfcfe; }
+        .form-footer { padding: 28px 39px; display: flex; align-items: center; justify-content: space-between; gap: 28px; background: #fbfcfe; }
+        .terms-consent { max-width: 540px; display: flex; align-items: flex-start; gap: 10px; color: #5c677a; font-size: 13px; line-height: 1.5; }
+        .terms-consent input { margin-top: 3px; accent-color: var(--blue); }
+        .terms-consent a { color: var(--blue); font-weight: 700; }
         .submit-area { display: flex; align-items: center; gap: 14px; }
         .submit-area p { max-width: 210px; margin: 0; color: var(--red); font-size: 14px; }
         .submit-area :global(.button-primary) { min-width: 145px; }

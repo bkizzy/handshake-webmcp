@@ -122,3 +122,31 @@ export function sendLoginCode(email: string, code: string) {
     footer: "Enter this code in Mutual Assent AI. It expires shortly and can only be used once.",
   });
 }
+
+export async function sendContactMessage(input: { name: string; email: string; message: string }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM;
+  const to = process.env.CONTACT_EMAIL;
+  if (!apiKey || !from || !to) return false;
+  const senderAddress = from.match(/<([^>]+)>/)?.[1] ?? from;
+  const subjectName = input.name.replace(/[\r\n]/g, " ").slice(0, 120);
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        from: `Mutual Assent AI <${senderAddress.trim()}>`,
+        to: [to],
+        reply_to: input.email,
+        subject: `Mutual Assent AI contact from ${subjectName}`,
+        html: `<div style="font-family:Arial,sans-serif;color:#172033"><h1 style="font-size:22px">New beta contact</h1><p><strong>Name:</strong> ${escapeHtml(input.name)}</p><p><strong>Email:</strong> ${escapeHtml(input.email)}</p><p style="white-space:pre-wrap">${escapeHtml(input.message)}</p></div>`,
+        text: `Name: ${input.name}\nEmail: ${input.email}\n\n${input.message}`,
+      }),
+    });
+    if (!response.ok) console.error("Contact email failed", response.status);
+    return response.ok;
+  } catch (error) {
+    console.error("Contact email failed", error instanceof Error ? error.name : "unknown_error");
+    return false;
+  }
+}

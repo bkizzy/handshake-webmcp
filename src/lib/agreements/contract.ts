@@ -26,9 +26,13 @@ export const signatureConsentVersion = "handshake-esign-consent-v1";
 
 export function templateForKind(kind: AgreementKind): AgreementTemplate {
   return {
-    id: kind === "mutual" ? "handshake-mutual-nda" : "handshake-one-way-nda",
-    name: kind === "mutual" ? "Mutual non-disclosure agreement" : "One-way non-disclosure agreement",
-    version: "2.0",
+    id: kind === "mutual" ? "common-paper-mutual-nda-v1" : "mutual-assent-one-way-nda-cp-adaptation-v1",
+    name: kind === "mutual" ? "Mutual NDA adapted from Common Paper" : "One-way NDA adapted from Common Paper",
+    version: "Common Paper 1.0 · Mutual Assent adaptation 1.0",
+    sourceUrl: "https://commonpaper.com/standards/mutual-nda/1.0",
+    license: "CC BY 4.0",
+    licenseUrl: "https://creativecommons.org/licenses/by/4.0/",
+    adapted: true,
   };
 }
 
@@ -93,7 +97,10 @@ export function renderAgreementMarkdown(agreement: Agreement) {
     const letter = String.fromCharCode(65 + index);
     return `## Appendix ${letter} — Previously Known Information of ${party.legalName}\n\nThe following information is identified by ${party.legalName} as information it knew lawfully and without restriction before disclosure under this Agreement:\n\n${knownInformationLines(value).map((line) => `- ${line}`).join("\n")}`;
   }).join("\n\n");
-  return `# ${agreement.title}\n\n_${agreement.template.name} · Template ${agreement.template.version}_\n\n${parties}\n\n**Purpose.** The Parties wish to evaluate or pursue ${agreement.fields.purpose}.\n\n${sections}\n\n## Signatures\n\nThe Parties intend electronic signatures to have the same effect as original signatures.\n\n${signatureBlock(agreement, "author")}\n\n${signatureBlock(agreement, "signer")}\n\n${appendices}\n`;
+  const attribution = agreement.template.sourceUrl
+    ? `## Source and License\n\nAdapted from the Common Paper Mutual Non-Disclosure Agreement Version 1.0 (${agreement.template.sourceUrl}), used under ${agreement.template.license ?? "CC BY 4.0"} (${agreement.template.licenseUrl ?? "https://creativecommons.org/licenses/by/4.0/"}). Common Paper is not affiliated with or responsible for Mutual Assent AI. The agreement above may contain modifications made by its parties.`
+    : "";
+  return `# ${agreement.title}\n\n_${agreement.template.name} · Template ${agreement.template.version}_\n\n${parties}\n\n**Purpose.** The Parties wish to evaluate or pursue ${agreement.fields.purpose}.\n\n**Governing Law.** ${agreement.fields.governingLaw}.\n\n${sections}\n\n## Signatures\n\nThe Parties intend electronic signatures to have the same effect as original signatures.\n\n${signatureBlock(agreement, "author")}\n\n${signatureBlock(agreement, "signer")}\n\n${appendices}\n\n${attribution}\n`;
 }
 
 function versionForReview(agreement: Agreement): AgreementVersion | undefined {

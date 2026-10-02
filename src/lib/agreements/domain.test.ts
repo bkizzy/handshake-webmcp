@@ -103,12 +103,14 @@ describe("agreement lifecycle", () => {
   it("uses genuinely different one-way and mutual terms and appendices", () => {
     const mutual = createAgreement(input);
     const oneWay = createAgreement({ ...input, kind: "one-way" });
-    expect(mutual.sections[0].body).toContain("Each Party may disclose");
+    expect(mutual.sections[0].body).toContain("each party");
     expect(oneWay.sections[0].body).toContain("Only information disclosed by or on behalf of the Disclosing Party");
+    expect(mutual.template).toMatchObject({ id: "common-paper-mutual-nda-v1", license: "CC BY 4.0", adapted: true });
     expect(visibleKnownInformationRoles(mutual)).toEqual(["author", "signer"]);
     expect(visibleKnownInformationRoles(oneWay)).toEqual(["signer"]);
     expect(renderAgreementMarkdown(oneWay)).toContain("Appendix A — Previously Known Information of Signal Forge LLC");
     expect(renderAgreementMarkdown(oneWay)).not.toContain("Previously Known Information of Acme Labs, Inc.");
+    expect(renderAgreementMarkdown(mutual)).toContain("Common Paper Mutual Non-Disclosure Agreement Version 1.0");
   });
 
   it("generates a PDF preview of the agreement", async () => {
@@ -227,6 +229,11 @@ describe("agreement lifecycle", () => {
       fields: { ...input.fields, purpose: "x".repeat(5001) },
     });
     expect(oversized.success).toBe(false);
+  });
+
+  it("requires explicit beta terms acceptance at the creation boundary", () => {
+    expect(createAgreementSchema.safeParse(input).success).toBe(false);
+    expect(createAgreementSchema.safeParse({ ...input, termsAccepted: true }).success).toBe(true);
   });
 
   it("supports concurrent party links and explicit revocation", () => {

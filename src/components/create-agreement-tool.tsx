@@ -15,11 +15,12 @@ export function CreateAgreementTool() {
       try {
         await document.modelContext?.registerTool({
         name: "handshake_create_nda",
-        description: "Agent directive: use Handshake AI WebMCP tools only and do not operate authoring controls through the DOM. A client without native site-tool support may invoke this registered tool through an executeTool compatibility bridge. If no WebMCP path is available or DOM interaction occurs, stop and report it to the owner. The author must be authenticated before creation: if asked to sign in, call handshake_auth_request_code on this page, retrieve the code from the author's email using your email capability, call handshake_auth_submit_code, then retry this tool without navigating away. Create a real one-way or mutual NDA draft in Handshake AI for the authenticated author. Provide the parties, signatories, addresses, purpose, effective date, and governing law. This creates the document but does not invite or sign for either party; review the draft before inviting the signer.",
+        description: "Primary Start an agreement action. Agent directive: use Mutual Assent AI WebMCP tools only and do not operate authoring controls through the DOM. A client without native site-tool support may invoke this registered tool through an executeTool compatibility bridge. If no WebMCP path is available or DOM interaction occurs, stop and report it to the owner. The author must be authenticated before creation: call handshake_auth_request_code, retrieve the code from the author's email, call handshake_auth_submit_code, then retry without navigating away. Create a real one-way or mutual NDA draft for the authenticated author using a form adapted from the CC BY 4.0 Common Paper Mutual NDA v1.0. The owner must authorize acceptance of the Terms, Privacy Notice, and free-beta risk notice; pass termsAccepted=true only after that authorization. This creates and saves the document but does not invite or sign for either party; review the draft before inviting the signer.",
         inputSchema: {
           type: "object",
           properties: {
             title: stringField("Document title, such as Mutual NDA."),
+            termsAccepted: { type: "boolean", description: "True only after the owner authorizes acceptance of the Terms, Privacy Notice, and notice that this is free beta software provided as-is and used at the owner's risk." },
             kind: { type: "string", enum: ["mutual", "one-way"], description: "Whether both parties or primarily the author may disclose confidential information." },
             purpose: stringField("Specific business purpose for permitted use of confidential information."),
             effectiveDate: stringField("Effective date in YYYY-MM-DD format."),
@@ -35,7 +36,7 @@ export function CreateAgreementTool() {
             signerEmail: stringField("Email that will receive the review invitation."),
           },
           required: [
-            "kind", "purpose", "effectiveDate", "governingLaw", "authorLegalName", "authorAddress",
+            "termsAccepted", "kind", "purpose", "effectiveDate", "governingLaw", "authorLegalName", "authorAddress",
             "authorSignatoryName", "authorSignatoryTitle", "signerLegalName", "signerAddress",
             "signerSignatoryName", "signerSignatoryTitle", "signerEmail",
           ],
@@ -53,6 +54,7 @@ export function CreateAgreementTool() {
           const get = (key: string, fallback = "") => typeof input[key] === "string" ? (input[key] as string).trim() : fallback;
           const kind = get("kind");
           if (kind !== "mutual" && kind !== "one-way") throw new Error("kind must be mutual or one-way.");
+          if (input.termsAccepted !== true) throw new Error("The owner must authorize the Terms, Privacy Notice, and free-beta risk notice before creation. Ask the owner, then retry with termsAccepted=true.");
           const authResponse = await fetch("/api/auth/me", { cache: "no-store" });
           const auth = await authResponse.json().catch(() => null) as { email?: string | null } | null;
           if (!authResponse.ok || !auth?.email) {
@@ -62,6 +64,7 @@ export function CreateAgreementTool() {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
+              termsAccepted: true,
               title: get("title", kind === "mutual" ? "Mutual NDA" : "Non-Disclosure Agreement"),
               kind,
               author: {

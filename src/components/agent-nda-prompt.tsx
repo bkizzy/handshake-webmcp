@@ -5,7 +5,7 @@ import { useState } from "react";
 
 export function AgentNdaPrompt({ prompt }: { prompt: string }) {
   const [copied, setCopied] = useState(false);
-  const resolvedPrompt = prompt.replace("{url}", "https://mutualassent.site");
+  const resolvedPrompt = prompt.replace("{url}", "https://mutualassent.com");
 
   async function copyPrompt() {
     await navigator.clipboard.writeText(resolvedPrompt);
