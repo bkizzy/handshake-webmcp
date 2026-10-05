@@ -139,6 +139,25 @@ describe("agreement lifecycle", () => {
     expect(agreement.status).toBe("ready");
   });
 
+  it("starts with only a counterparty email but requires complete details before approval", () => {
+    const parsed = createAgreementSchema.parse({
+      ...input,
+      termsAccepted: true,
+      signer: { email: "sam@example.com" },
+    });
+    expect(parsed.signer).toEqual({ legalName: "", address: "", signatoryName: "", signatoryTitle: "", email: "sam@example.com" });
+
+    let agreement = executeAgreementAction(createAgreement(parsed), authorHuman, { type: "invite" });
+    agreement = executeAgreementAction(agreement, authorHuman, { type: "mark_ready" });
+    expect(captureError(() => executeAgreementAction(agreement, signerHuman, { type: "mark_ready" })).code).toBe("participant_details_required");
+
+    agreement = executeAgreementAction(agreement, signerHuman, { type: "update_participant", role: "signer", participant: { legalName: "Signal Forge LLC" } });
+    agreement = executeAgreementAction(agreement, signerAgent, { type: "update_participant", role: "signer", participant: { address: "200 Example Avenue, New York, NY 10001", signatoryName: "Sam Signer", signatoryTitle: "Founder" } });
+    agreement = executeAgreementAction(agreement, authorHuman, { type: "mark_ready" });
+    agreement = executeAgreementAction(agreement, signerHuman, { type: "mark_ready" });
+    expect(agreement.status).toBe("ready");
+  });
+
   it("returns an approved agreement to review when a new redline is proposed", () => {
     const agreement = executeAgreementAction(readyAgreement(), signerAgent, {
       type: "propose_redline",

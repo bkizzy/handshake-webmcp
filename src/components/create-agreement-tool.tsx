@@ -15,7 +15,7 @@ export function CreateAgreementTool() {
       try {
         await document.modelContext?.registerTool({
         name: "handshake_create_nda",
-        description: "Primary Start an agreement action. Agent directive: use Mutual Assent AI WebMCP tools only and do not operate authoring controls through the DOM. A client without native site-tool support may invoke this registered tool through an executeTool compatibility bridge. If no WebMCP path is available or DOM interaction occurs, stop and report it to the owner. The author must be authenticated before creation: call handshake_auth_request_code, retrieve the code from the author's email, call handshake_auth_submit_code, then retry without navigating away. Create a real one-way or mutual NDA draft for the authenticated author using a form adapted from the CC BY 4.0 Common Paper Mutual NDA v1.0. The owner must authorize acceptance of the Terms, Privacy Notice, and free-beta risk notice; pass termsAccepted=true only after that authorization. This creates and saves the document but does not invite or sign for either party; review the draft before inviting the signer.",
+        description: "Primary Start an agreement action. Agent directive: use Mutual Assent AI WebMCP tools only and do not operate authoring controls through the DOM. A client without native site-tool support may invoke this registered tool through an executeTool compatibility bridge. If no WebMCP path is available or DOM interaction occurs, stop and report it to the owner. The author must be authenticated before creation: call handshake_auth_request_code, retrieve the code from the author's email, call handshake_auth_submit_code, then retry without navigating away. Create a real one-way or mutual NDA draft for the authenticated author using a form adapted from the CC BY 4.0 Common Paper Mutual NDA v1.0. Only the counterparty email is required at creation; their legal name, address, signatory name, and title may be supplied later by the counterparty or their agent through handshake_update_participant, but must be complete before that party approves. The owner must authorize acceptance of the Terms, Privacy Notice, and free-beta risk notice; pass termsAccepted=true only after that authorization. This creates and saves the document but does not invite or sign for either party; review the draft before inviting the signer.",
         inputSchema: {
           type: "object",
           properties: {
@@ -29,16 +29,15 @@ export function CreateAgreementTool() {
             authorAddress: stringField("Author's complete notice address."),
             authorSignatoryName: stringField("Author's expected human signatory."),
             authorSignatoryTitle: stringField("Author signatory's title."),
-            signerLegalName: stringField("Invited party's full legal company or individual name."),
-            signerAddress: stringField("Invited party's complete notice address."),
-            signerSignatoryName: stringField("Invited party's expected human signatory."),
-            signerSignatoryTitle: stringField("Invited signatory's title."),
+            signerLegalName: stringField("Optional at creation. Invited party's full legal company or individual name."),
+            signerAddress: stringField("Optional at creation. Invited party's complete notice address."),
+            signerSignatoryName: stringField("Optional at creation. Invited party's expected human signatory."),
+            signerSignatoryTitle: stringField("Optional at creation. Invited signatory's title."),
             signerEmail: stringField("Email that will receive the review invitation."),
           },
           required: [
             "termsAccepted", "kind", "purpose", "effectiveDate", "governingLaw", "authorLegalName", "authorAddress",
-            "authorSignatoryName", "authorSignatoryTitle", "signerLegalName", "signerAddress",
-            "signerSignatoryName", "signerSignatoryTitle", "signerEmail",
+            "authorSignatoryName", "authorSignatoryTitle", "signerEmail",
           ],
           additionalProperties: false,
         },

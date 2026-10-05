@@ -151,14 +151,14 @@ export function NewAgreementForm({ authorEmail }: { authorEmail: string }) {
       <section className="form-section">
         <div className="section-label">
           <span><UserRound size={19} /></span>
-          <div><h2>Other side</h2><p>They can review without creating an account.</p></div>
+          <div><h2>Other side</h2><p>Only their email is needed now. They or their agent can complete the remaining details before approval.</p></div>
         </div>
         <div className="section-fields">
-          <label className="field-label">Legal company name<input className="field-input" value={form.signerLegalName} onChange={(event) => update("signerLegalName", event.target.value)} required /></label>
+          <label className="field-label">Legal company name <span className="optional">Optional</span><input className="field-input" value={form.signerLegalName} onChange={(event) => update("signerLegalName", event.target.value)} /></label>
           <label className="field-label">Reviewer email<input className="field-input" type="email" value={form.signerEmail} onChange={(event) => update("signerEmail", event.target.value)} required /></label>
-          <label className="field-label wide">Company address<input className="field-input" value={form.signerAddress} onChange={(event) => update("signerAddress", event.target.value)} required /></label>
-          <label className="field-label">Expected signatory<input className="field-input" value={form.signerName} onChange={(event) => update("signerName", event.target.value)} required /></label>
-          <label className="field-label">Signatory title<input className="field-input" value={form.signerTitle} onChange={(event) => update("signerTitle", event.target.value)} required /></label>
+          <label className="field-label wide">Company address <span className="optional">Optional</span><input className="field-input" value={form.signerAddress} onChange={(event) => update("signerAddress", event.target.value)} /></label>
+          <label className="field-label">Expected signatory <span className="optional">Optional</span><input className="field-input" value={form.signerName} onChange={(event) => update("signerName", event.target.value)} /></label>
+          <label className="field-label">Signatory title <span className="optional">Optional</span><input className="field-input" value={form.signerTitle} onChange={(event) => update("signerTitle", event.target.value)} /></label>
         </div>
       </section>
 
@@ -176,6 +176,7 @@ export function NewAgreementForm({ authorEmail }: { authorEmail: string }) {
         .section-label > span { width: 38px; height: 38px; flex: 0 0 auto; display: grid; place-items: center; color: var(--blue); background: var(--blue-soft); border-radius: 9px; }
         h2 { margin: 1px 0 2px; color: #263147; font-size: 16px; letter-spacing: -.01em; }
         .section-label p { margin: 0; color: #6b7588; font-size: 14px; line-height: 1.5; }
+        .optional { margin-left: 5px; color: #8a93a3; font-size: 12px; font-weight: 500; }
         .section-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 17px; }
         .wide { grid-column: 1 / -1; }
         .kind-field { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; padding: 0; border: 0; }

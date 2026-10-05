@@ -98,10 +98,11 @@ export async function buildAgreementPdf(agreement: StoredAgreement) {
   const partyRole = (role: PartyRole) => agreement.kind === "mutual"
     ? role === "author" ? "First Party" : "Second Party"
     : role === "author" ? "Disclosing Party" : "Receiving Party";
+  const participantValue = (value: string, fallback: string) => value.trim() || `[${fallback} to be completed]`;
   paragraph(`This ${agreement.kind === "mutual" ? "Mutual " : ""}Non-Disclosure Agreement (the "Agreement") is entered into as of ${agreement.fields.effectiveDate} (the "Effective Date") by and between:`);
   for (const role of ["author", "signer"] as PartyRole[]) {
     const party = agreement[role];
-    paragraph(`${party.legalName} (the "${partyRole(role)}")\n${party.address}\nAttention: ${party.signatoryName}, ${party.signatoryTitle}\n${party.email}`, { indent: 18 });
+    paragraph(`${participantValue(party.legalName, "Legal name")} (the "${partyRole(role)}")\n${participantValue(party.address, "Address")}\nAttention: ${participantValue(party.signatoryName, "Signatory name")}, ${participantValue(party.signatoryTitle, "Signatory title")}\n${party.email}`, { indent: 18 });
   }
   if (agreement.kind === "mutual") paragraph('Each may be a "Disclosing Party" or "Receiving Party" depending on the circumstances, and together they are the "Parties."');
   else paragraph('Together, they are the "Parties."');
@@ -117,16 +118,17 @@ export async function buildAgreementPdf(agreement: StoredAgreement) {
   for (const role of ["author", "signer"] as PartyRole[]) {
     const party = agreement[role];
     const signature = agreement.signatures[role];
-    heading(`${partyRole(role)} - ${party.legalName}`);
+    heading(`${partyRole(role)} - ${participantValue(party.legalName, "Legal name")}`);
     paragraph(signature
-      ? `By: ${signature.typedName}\nTitle: ${party.signatoryTitle}\nSigned electronically: ${signature.signedAt} UTC\nEmail verified: ${signature.verifiedEmail}`
-      : `By: ${party.signatoryName}\nTitle: ${party.signatoryTitle}\nDate: ____________________`, { indent: 18 });
+      ? `By: ${signature.typedName}\nTitle: ${participantValue(party.signatoryTitle, "Signatory title")}\nSigned electronically: ${signature.signedAt} UTC\nEmail verified: ${signature.verifiedEmail}`
+      : `By: ${participantValue(party.signatoryName, "Signatory name")}\nTitle: ${participantValue(party.signatoryTitle, "Signatory title")}\nDate: ____________________`, { indent: 18 });
   }
 
   for (const [index, role] of visibleKnownInformationRoles(agreement).entries()) {
     const party = agreement[role];
-    heading(`Appendix ${String.fromCharCode(65 + index)} - Previously Known Information of ${party.legalName}`, 1);
-    paragraph(`The following information is identified by ${party.legalName} as information it knew lawfully and without restriction before disclosure under this Agreement:`);
+    const partyName = party.legalName.trim() || "the invited counterparty";
+    heading(`Appendix ${String.fromCharCode(65 + index)} - Previously Known Information of ${partyName}`, 1);
+    paragraph(`The following information is identified by ${partyName} as information it knew lawfully and without restriction before disclosure under this Agreement:`);
     for (const line of knownInformationLines(agreement.fields[knownInformationField(role)])) paragraph(`- ${line}`, { indent: 18 });
   }
 

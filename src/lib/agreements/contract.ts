@@ -69,21 +69,23 @@ export function finalTerms(agreement: Agreement) {
 
 function partyBlock(agreement: Agreement, role: PartyRole) {
   const party = agreement[role];
+  const value = (text: string, fallback: string) => text.trim() || `[${fallback} to be completed]`;
   const definedRole = agreement.kind === "mutual"
     ? role === "author" ? "First Party" : "Second Party"
     : role === "author" ? "Disclosing Party" : "Receiving Party";
-  return `**${party.legalName}** (the “${definedRole}”)  \n${party.address}  \nAttention: ${party.signatoryName}, ${party.signatoryTitle}  \n${party.email}`;
+  return `**${value(party.legalName, "Legal name")}** (the “${definedRole}”)  \n${value(party.address, "Address")}  \nAttention: ${value(party.signatoryName, "Signatory name")}, ${value(party.signatoryTitle, "Signatory title")}  \n${party.email}`;
 }
 
 function signatureBlock(agreement: Agreement, role: PartyRole) {
   const party = agreement[role];
+  const value = (text: string, fallback: string) => text.trim() || `[${fallback} to be completed]`;
   const signature = agreement.signatures[role];
   const heading = agreement.kind === "mutual"
     ? role === "author" ? "First Party" : "Second Party"
     : role === "author" ? "Disclosing Party" : "Receiving Party";
   return signature
-    ? `### ${heading}\n\n**${party.legalName}**  \nBy: **${signature.typedName}**  \nTitle: ${party.signatoryTitle}  \nSigned electronically: ${signature.signedAt} UTC  \nEmail verified: ${signature.verifiedEmail}`
-    : `### ${heading}\n\n**${party.legalName}**  \nBy: ${party.signatoryName}  \nTitle: ${party.signatoryTitle}  \nDate: ____________________`;
+    ? `### ${heading}\n\n**${value(party.legalName, "Legal name")}**  \nBy: **${signature.typedName}**  \nTitle: ${value(party.signatoryTitle, "Signatory title")}  \nSigned electronically: ${signature.signedAt} UTC  \nEmail verified: ${signature.verifiedEmail}`
+    : `### ${heading}\n\n**${value(party.legalName, "Legal name")}**  \nBy: ${value(party.signatoryName, "Signatory name")}  \nTitle: ${value(party.signatoryTitle, "Signatory title")}  \nDate: ____________________`;
 }
 
 export function renderAgreementMarkdown(agreement: Agreement) {
@@ -93,9 +95,10 @@ export function renderAgreementMarkdown(agreement: Agreement) {
   const sections = agreement.sections.map((section) => `## ${section.title}\n\n${section.body}`).join("\n\n");
   const appendices = visibleKnownInformationRoles(agreement).map((role, index) => {
     const party = agreement[role];
+    const partyName = party.legalName.trim() || "the invited counterparty";
     const value = agreement.fields[knownInformationField(role)]?.trim() || "None disclosed.";
     const letter = String.fromCharCode(65 + index);
-    return `## Appendix ${letter} — Previously Known Information of ${party.legalName}\n\nThe following information is identified by ${party.legalName} as information it knew lawfully and without restriction before disclosure under this Agreement:\n\n${knownInformationLines(value).map((line) => `- ${line}`).join("\n")}`;
+    return `## Appendix ${letter} — Previously Known Information of ${partyName}\n\nThe following information is identified by ${partyName} as information it knew lawfully and without restriction before disclosure under this Agreement:\n\n${knownInformationLines(value).map((line) => `- ${line}`).join("\n")}`;
   }).join("\n\n");
   const attribution = agreement.template.sourceUrl
     ? `## Source and License\n\nAdapted from the Common Paper Mutual Non-Disclosure Agreement Version 1.0 (${agreement.template.sourceUrl}), used under ${agreement.template.license ?? "CC BY 4.0"} (${agreement.template.licenseUrl ?? "https://creativecommons.org/licenses/by/4.0/"}). Common Paper is not affiliated with or responsible for Mutual Assent AI. The agreement above may contain modifications made by its parties.`

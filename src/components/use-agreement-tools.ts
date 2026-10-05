@@ -219,7 +219,7 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
     if (agreement.permissions.canCorrectParticipants) {
       tools.push({
         name: "handshake_update_participant",
-        description: `Correct participant details. An author may correct either party and may replace the signer email, which revokes old signer links. A signer may correct only their own non-email details. You are the ${agreement.viewerRole}.`,
+        description: `Add or correct participant details. An author may update either party and may replace the signer email, which revokes old signer links. A signer or their agent may complete the signer's legal name, address, signatory name, and title. Those details are optional when the agreement is created but required before that party can approve. You are the ${agreement.viewerRole}.`,
         inputSchema: objectSchema({
           requestId: requestIdSchema,
           role: { type: "string", enum: ["author", "signer"] },
@@ -308,7 +308,7 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
     if (agreement.permissions.canMarkReady) {
       tools.push({
         name: "handshake_approve_current_version",
-        description: `Approve version ${agreement.version} for the ${agreement.viewerRole}. This does not sign.`,
+        description: `Approve version ${agreement.version} for the ${agreement.viewerRole}. This does not sign. The approving party's legal name, address, signatory name, and signatory title must be complete first; use handshake_update_participant if any are missing.`,
         inputSchema: objectSchema({ requestId: requestIdSchema }, ["requestId"]),
         annotations: { ...commonAnnotations, idempotentHint: true },
         execute: async (input) => {

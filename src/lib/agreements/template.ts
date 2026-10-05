@@ -3,17 +3,17 @@ import type { AgreementKind, AgreementSection, CreateAgreementInput } from "./ty
 // Adapted from the Common Paper Mutual Non-Disclosure Agreement Version 1.0,
 // licensed under CC BY 4.0. The source and license are preserved in every new
 // agreement's template metadata and rendered document.
-function introduction(kind: AgreementKind, authorName: string, signerName: string) {
+function introduction(kind: AgreementKind) {
   if (kind === "mutual") {
-    return `This Mutual Non-Disclosure Agreement allows each party (a “Disclosing Party”) to disclose or make available Confidential Information to the other party (a “Receiving Party”) in connection with the Purpose. “Confidential Information” means information that the Disclosing Party identifies as confidential or proprietary, or that should reasonably be understood as confidential or proprietary because of its nature and the circumstances of disclosure. It includes the existence and status of the parties’ discussions; information on the cover page; and technical or business information, product designs or roadmaps, requirements, pricing, security and compliance documentation, technology, inventions, and know-how. ${authorName} and ${signerName} are each a “Party” and together the “Parties.”`;
+    return "This Mutual Non-Disclosure Agreement allows each party (a “Disclosing Party”) to disclose or make available Confidential Information to the other party (a “Receiving Party”) in connection with the Purpose. “Confidential Information” means information that the Disclosing Party identifies as confidential or proprietary, or that should reasonably be understood as confidential or proprietary because of its nature and the circumstances of disclosure. It includes the existence and status of the parties’ discussions; information on the cover page; and technical or business information, product designs or roadmaps, requirements, pricing, security and compliance documentation, technology, inventions, and know-how. Each signatory is a “Party” and together they are the “Parties.”";
   }
-  return `This One-Way Non-Disclosure Agreement allows ${authorName} (the “Disclosing Party”) to disclose or make available Confidential Information to ${signerName} (the “Receiving Party”) in connection with the Purpose. “Confidential Information” means information that the Disclosing Party identifies as confidential or proprietary, or that should reasonably be understood as confidential or proprietary because of its nature and the circumstances of disclosure. It includes the existence and status of the parties’ discussions; information on the cover page; and technical or business information, product designs or roadmaps, requirements, pricing, security and compliance documentation, technology, inventions, and know-how. Only information disclosed by or on behalf of the Disclosing Party is protected under this Agreement.`;
+  return "This One-Way Non-Disclosure Agreement allows the First Party (the “Disclosing Party”) to disclose or make available Confidential Information to the Second Party (the “Receiving Party”) in connection with the Purpose. “Confidential Information” means information that the Disclosing Party identifies as confidential or proprietary, or that should reasonably be understood as confidential or proprietary because of its nature and the circumstances of disclosure. It includes the existence and status of the parties’ discussions; information on the cover page; and technical or business information, product designs or roadmaps, requirements, pricing, security and compliance documentation, technology, inventions, and know-how. Only information disclosed by or on behalf of the Disclosing Party is protected under this Agreement.";
 }
 
 export function createNdaSections(input: CreateAgreementInput): AgreementSection[] {
   const appendixReference = input.kind === "mutual" ? "Appendices A and B" : "Appendix A";
   return [
-    { id: "introduction", title: "1. Introduction", body: introduction(input.kind, input.author.legalName, input.signer.legalName) },
+    { id: "introduction", title: "1. Introduction", body: introduction(input.kind) },
     {
       id: "use-and-protection",
       title: "2. Use and Protection of Confidential Information",

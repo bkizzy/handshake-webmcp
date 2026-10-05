@@ -8,12 +8,28 @@ const partySchema = z.object({
   email: z.email().max(320),
 });
 
+const counterpartyDraftSchema = z.object({
+  legalName: z.string().trim().max(200).optional().default(""),
+  address: z.string().trim().max(1000).optional().default(""),
+  signatoryName: z.string().trim().max(200).optional().default(""),
+  signatoryTitle: z.string().trim().max(200).optional().default(""),
+  email: z.email().max(320),
+});
+
+const participantUpdateSchema = z.object({
+  legalName: z.string().trim().max(200).optional(),
+  address: z.string().trim().max(1000).optional(),
+  signatoryName: z.string().trim().max(200).optional(),
+  signatoryTitle: z.string().trim().max(200).optional(),
+  email: z.email().max(320).optional(),
+});
+
 export const createAgreementSchema = z.object({
   termsAccepted: z.literal(true, { error: "Accept the Terms and beta risk notice before creating an agreement." }),
   title: z.string().trim().min(1).max(200),
   kind: z.enum(["one-way", "mutual"]),
   author: partySchema,
-  signer: partySchema,
+  signer: counterpartyDraftSchema,
   fields: z.object({
     effectiveDate: z.string().trim().min(1).max(100),
     purpose: z.string().trim().min(1).max(5000),
@@ -65,7 +81,7 @@ const agreementActionSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("update_participant"),
     role: z.enum(["author", "signer"]),
-    participant: partySchema.partial().refine((value) => Object.keys(value).length > 0),
+    participant: participantUpdateSchema.refine((value) => Object.keys(value).length > 0),
   }),
   z.object({
     type: z.literal("propose_redline"),

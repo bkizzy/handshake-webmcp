@@ -329,6 +329,7 @@ export function acknowledgeAgreementUpdates(
 export function issueSignatureChallenge(current: StoredAgreement, role: PartyRole) {
   const agreement = normalizeAgreement(current);
   assert(agreement.status === "ready", "Both parties must approve before signing.", "not_ready", 409);
+  assertParticipantComplete(agreement[role], role);
   assert(!agreement.signatures[role], "This party has already signed.", "already_signed", 409);
   const existing = agreement.signatureChallenges[role];
   if (existing && Date.now() - Date.parse(existing.createdAt) < 30_000) {
@@ -388,12 +389,24 @@ function validateParticipantUpdate(
     "forbidden",
     403,
   );
-  assert(updated.legalName.trim(), "Legal name is required.", "legal_name_required");
-  assert(updated.address.trim(), "Address is required.", "address_required");
-  assert(updated.signatoryName.trim(), "Signatory name is required.", "signatory_name_required");
-  assert(updated.signatoryTitle.trim(), "Signatory title is required.", "signatory_title_required");
   assert(updated.email.trim(), "Email is required.", "email_required");
   return updated;
+}
+
+function assertParticipantComplete(party: Party, role: PartyRole) {
+  const fields = [
+    ["legal name", party.legalName],
+    ["address", party.address],
+    ["signatory name", party.signatoryName],
+    ["signatory title", party.signatoryTitle],
+  ] as const;
+  const missing = fields.filter(([, value]) => !value.trim()).map(([label]) => label);
+  assert(
+    missing.length === 0,
+    `Complete the ${role === "author" ? "author" : "counterparty"} ${missing.join(", ")} before approving this agreement.`,
+    "participant_details_required",
+    409,
+  );
 }
 
 export function executeAgreementAction(
@@ -553,6 +566,7 @@ export function executeAgreementAction(
     case "mark_ready": {
       assert(agreement.status === "review", "The agreement is not in review.", "not_in_review", 409);
       assert(!agreement.redlines.some((item) => item.status === "open"), "Resolve all open redlines first.", "open_redlines", 409);
+      assertParticipantComplete(agreement[context.role], context.role);
       agreement.readiness[context.role] = true;
       advanceUpdatedAt(agreement);
       if (agreement.readiness.author && agreement.readiness.signer) agreement.status = "ready";
@@ -582,6 +596,7 @@ export function executeAgreementAction(
     case "sign": {
       assert(context.source === "human", "An agent cannot sign an agreement.", "human_signature_required", 403);
       assert(agreement.status === "ready", "Both parties must approve the current version before signing.", "not_ready", 409);
+      assertParticipantComplete(agreement[context.role], context.role);
       assert(!agreement.signatures[context.role], "This party has already signed.", "already_signed", 409);
       assert(action.typedName.trim(), "Enter the signatory name.", "signature_name_required");
       assert(action.consentVersion === signatureConsentVersion, "Review and accept the current electronic-signature consent.", "signature_consent_required", 409);
