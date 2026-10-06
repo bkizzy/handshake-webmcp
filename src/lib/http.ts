@@ -5,10 +5,13 @@ import { AgreementError } from "@/src/lib/agreements/domain";
 
 export function apiError(error: unknown) {
   if (error instanceof AgreementError) {
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: { code: error.code, message: error.message, details: error.details } },
       { status: error.status },
     );
+    const retryAfterSeconds = error.details?.retryAfterSeconds;
+    if (typeof retryAfterSeconds === "number") response.headers.set("retry-after", String(retryAfterSeconds));
+    return response;
   }
   if (error instanceof ZodError) {
     return NextResponse.json(

@@ -1,31 +1,31 @@
 import { ArrowRight, Clock3, FileCheck2, FilePenLine, UsersRound } from "lucide-react";
 import Link from "next/link";
 
-import type { StoredAgreement } from "@/src/lib/agreements/types";
+import type { AgreementSummary } from "@/src/lib/agreements/types";
 
-function displayStatus(agreement: StoredAgreement) {
+function displayStatus(agreement: AgreementSummary) {
   if (agreement.status === "signed") return "Executed";
   if (agreement.status === "declined") return "Declined";
   if (agreement.status === "voided") return "Voided";
-  if (agreement.status === "ready") return Object.keys(agreement.signatures).length ? "Awaiting signature" : "Ready to sign";
+  if (agreement.status === "ready") return agreement.signedRoles.length ? "Awaiting signature" : "Ready to sign";
   if (agreement.status === "review") {
-    if (agreement.redlines.some((redline) => redline.status === "open")) return "Redlining";
+    if (agreement.hasOpenRedlines) return "Redlining";
     if (agreement.readiness.author || agreement.readiness.signer) return "Awaiting approval";
     return "Awaiting review";
   }
   return "Draft";
 }
 
-function statusIcon(agreement: StoredAgreement) {
+function statusIcon(agreement: AgreementSummary) {
   if (agreement.status === "signed") return <FileCheck2 size={17} />;
   if (agreement.status === "review") return <UsersRound size={17} />;
   if (agreement.status === "ready") return <Clock3 size={17} />;
   return <FilePenLine size={17} />;
 }
 
-export function AgreementList({ agreements, emptyTitle, emptyCopy }: { agreements: StoredAgreement[]; emptyTitle: string; emptyCopy: string }) {
+export function AgreementList({ agreements, emptyTitle, emptyCopy }: { agreements: AgreementSummary[]; emptyTitle: string; emptyCopy: string }) {
   if (!agreements.length) return <div className="empty-list"><span><FilePenLine size={23} /></span><h2>{emptyTitle}</h2><p>{emptyCopy}</p><Link className="button-primary" href="/new">Start an agreement <ArrowRight size={15} /></Link><style>{styles}</style></div>;
-  return <div className="agreement-list">{agreements.map((agreement) => <Link className="agreement-row" href={`/deal/${agreement.id}`} key={agreement.id}><span className={`row-icon ${agreement.status}`}>{statusIcon(agreement)}</span><div className="agreement-main"><h2>{agreement.title}</h2><p>{agreement.signer.legalName} · Updated {new Date(agreement.updatedAt).toLocaleDateString()}</p></div><div className="row-status"><b>{displayStatus(agreement)}</b><small>Version {agreement.version}</small></div><ArrowRight className="row-arrow" size={17} /></Link>)}<style>{styles}</style></div>;
+  return <div className="agreement-list">{agreements.map((agreement) => <Link className="agreement-row" href={`/deal/${agreement.id}`} key={agreement.id}><span className={`row-icon ${agreement.status}`}>{statusIcon(agreement)}</span><div className="agreement-main"><h2>{agreement.title}</h2><p>{agreement.counterpartyLegalName || "Invited counterparty"} · Updated {new Date(agreement.updatedAt).toLocaleDateString()}</p></div><div className="row-status"><b>{displayStatus(agreement)}</b><small>Version {agreement.version}</small></div><ArrowRight className="row-arrow" size={17} /></Link>)}<style>{styles}</style></div>;
 }
 
 const styles = `

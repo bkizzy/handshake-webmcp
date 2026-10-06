@@ -1,12 +1,12 @@
 import {
   AgreementError,
-  accessTokenMatches,
   createAccessGrant,
   createAgreement,
   normalizeAgreement,
 } from "./domain";
 import type { ActorSource, CreateAgreementInput, PartyRole, StoredAgreement } from "./types";
-import { createSupabaseAdminClient } from "@/src/lib/supabase/server";
+import { toAgreementSummary } from "./summary";
+import { createSupabaseAdminClient } from "../supabase/server";
 
 type AgreementStore = Map<string, StoredAgreement>;
 
@@ -62,16 +62,6 @@ export async function getAgreementById(id: string) {
   return agreement ? normalizeAgreement(agreement) : null;
 }
 
-export async function getAgreementByAccess(id: string, token: string): Promise<AgreementAccess> {
-  const agreement = await getAgreementById(id);
-  if (!agreement) throw new AgreementError("Agreement not found.", "not_found", 404);
-  const role = (Object.keys(agreement.access) as PartyRole[]).find((candidate) =>
-    accessTokenMatches(agreement.access[candidate], token),
-  );
-  if (!role) throw new AgreementError("This link is invalid or has expired.", "invalid_access", 403);
-  return { agreement: structuredClone(agreement), role };
-}
-
 export async function listAgreementsByOwner(ownerUserId: string) {
   const supabase = repositoryClient();
   if (supabase) {
@@ -97,6 +87,10 @@ export async function listAgreementsByOwner(ownerUserId: string) {
     .filter((agreement) => agreement.ownerUserId === ownerUserId || Object.values(agreement.profileAccess).includes(ownerUserId))
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
     .map((agreement) => structuredClone(agreement));
+}
+
+export async function listAgreementSummariesByOwner(ownerUserId: string) {
+  return (await listAgreementsByOwner(ownerUserId)).map(toAgreementSummary);
 }
 
 export async function saveAgreementToProfile(

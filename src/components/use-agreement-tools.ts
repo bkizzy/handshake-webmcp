@@ -32,7 +32,17 @@ const objectSchema = (properties: Record<string, unknown>, required: string[] = 
 const emptySchema = objectSchema({});
 const stringSchema = (description: string) => ({ type: "string", description });
 const requestIdSchema = stringSchema("Stable unique request ID. Reuse this exact value when retrying the same action so Handshake AI cannot repeat side effects.");
-const agentDirective = "Agent directive: use Handshake AI WebMCP tools only; do not operate agreement controls through the DOM. A client without native site-tool support may invoke these registered tools through an executeTool compatibility bridge. If no WebMCP path is available or you use the DOM, stop and report that limitation or violation to your owner.";
+const agentDirective = "Agent directive: use Handshake AI WebMCP tools only; do not operate agreement controls through the DOM. Signing is reserved for the human user: do not operate signing controls or call signing endpoints. When the agreement is ready, notify your owner and direct them to the signing page. A client without native site-tool support may invoke these registered tools through an executeTool compatibility bridge. If no WebMCP path is available or you use the DOM, stop and report that limitation or violation to your owner.";
+
+function agentWorkflowState(agreement: AgreementView) {
+  const signatureRequired = agreement.status === "ready" && !agreement.signatures[agreement.viewerRole];
+  return {
+    status: agreement.status,
+    nextAction: signatureRequired ? "human_signature_required" : agreement.status === "signed" ? "complete" : "continue_agreement_workflow",
+    agentMaySign: false,
+    messageForOwner: signatureRequired ? "The agreement is ready for your review and signature." : undefined,
+  };
+}
 
 export type AgreementWebMcpState = {
   phase: "unsupported" | "registering" | "registered" | "invoked" | "error";
@@ -115,7 +125,7 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
         execute: async () => {
           const latest = await freshAgreement();
           await acknowledge(latest.eventSequence).catch(() => undefined);
-          return textResult(`${latest.title} is version ${latest.version} and ${latest.status}. You are the ${latest.viewerRole}.`, { agreement: latest });
+          return textResult(`${latest.title} is version ${latest.version} and ${latest.status}. You are the ${latest.viewerRole}.`, { agreement: latest, workflow: agentWorkflowState(latest) });
         },
       },
       {
@@ -179,7 +189,7 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
           }
           const changed = latest.eventSequence > after;
           if (changed) await acknowledge(latest.eventSequence).catch(() => undefined);
-          return textResult(changed ? `Agreement updated through event ${latest.eventSequence}.` : `No new agreement event after ${after}.`, { changed, agreement: latest, eventSequence: latest.eventSequence });
+          return textResult(changed ? `Agreement updated through event ${latest.eventSequence}.` : `No new agreement event after ${after}.`, { changed, agreement: latest, eventSequence: latest.eventSequence, workflow: agentWorkflowState(latest) });
         },
       },
     ];

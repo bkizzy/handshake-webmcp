@@ -20,6 +20,7 @@ import {
   sendReviewInvitation,
   sendSignatureReady,
 } from "@/src/lib/email";
+import { consumeRateLimit, recordSecurityEvent, requestIp } from "@/src/lib/security";
 
 type Delivery = {
   role: PartyRole;
@@ -40,12 +41,6 @@ function actionRecipient(actionType: string, actorRole: PartyRole) {
   return null;
 }
 
-function ipAddress(request: Request) {
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-    || request.headers.get("x-real-ip")
-    || undefined;
-}
-
 export async function processAgreementAction(
   request: Request,
   id: string,
@@ -53,11 +48,29 @@ export async function processAgreementAction(
   options: { exposeInvitationUrl?: boolean } = {},
 ) {
   const body = actionRequestSchema.parse(await request.json());
-  const access = await resolveAgreementAccess(id, request);
+  const access = await resolveAgreementAccess(id);
   const { agreement: current, role } = access;
 
   if (body.idempotencyKey && current.processedActionKeys.includes(body.idempotencyKey)) {
     return NextResponse.json({ agreement: toAgreementView(current, role), replayed: true });
+  }
+
+  const sendsInvitation = body.action.type === "invite"
+    || body.action.type === "resend_invitation"
+    || (body.action.type === "update_participant"
+      && body.action.role === "signer"
+      && typeof body.action.participant.email === "string"
+      && body.action.participant.email.toLowerCase() !== current.signer.email.toLowerCase());
+  if (sendsInvitation) {
+    const recipientEmail = body.action.type === "update_participant"
+      ? body.action.participant.email ?? current.signer.email
+      : current.signer.email;
+    const limit = await consumeRateLimit("agreement-invitation", `${id}:${recipientEmail}`, 10, 60 * 60);
+    if (!limit.available) throw new AgreementError("Invitation delivery is temporarily unavailable.", "invitation_unavailable", 503);
+    if (!limit.allowed) {
+      await recordSecurityEvent({ eventType: "agreement.invitation_rate_limited", agreementId: id, actorRole: role, actorSource: source, ipAddress: requestIp(request) });
+      throw new AgreementError("Too many invitations were sent for this agreement. Try again later.", "invitation_rate_limited", 429, { retryAfterSeconds: limit.retryAfterSeconds });
+    }
   }
 
   const currentSequence = latestEventSequence(current);
@@ -70,13 +83,14 @@ export async function processAgreementAction(
     );
   }
 
+  const authorEmailBefore = current.author.email.toLowerCase();
   const signerEmailBefore = current.signer.email.toLowerCase();
   let updated: StoredAgreement;
   try {
     updated = executeAgreementAction(current, {
       role,
       source,
-      ipAddress: source === "human" ? ipAddress(request) : undefined,
+      ipAddress: source === "human" ? requestIp(request) : undefined,
       userAgent: source === "human" ? request.headers.get("user-agent") ?? undefined : undefined,
     }, body.action);
   } catch (error) {
@@ -90,6 +104,7 @@ export async function processAgreementAction(
       failed.signatureChallenges[role] = error.details.challenge as typeof failed.signatureChallenges[typeof role];
       failed.updatedAt = new Date(Math.max(Date.now(), Date.parse(current.updatedAt) + 1)).toISOString();
       await saveAgreement(failed, { expectedUpdatedAt: current.updatedAt });
+      await recordSecurityEvent({ eventType: "signature.code_failed", agreementId: id, actorRole: role, actorSource: source, ipAddress: requestIp(request) });
       throw new AgreementError(error.message, error.code, error.status, {
         attemptsRemaining: error.details.attemptsRemaining,
       });
@@ -97,6 +112,14 @@ export async function processAgreementAction(
     throw error;
   }
   if (updated.status === "signed") updated = await sealSignedAgreement(updated);
+  if (authorEmailBefore !== updated.author.email.toLowerCase()) {
+    updated.access.author = [];
+    updated.accessSessions.author = [];
+  }
+  if (signerEmailBefore !== updated.signer.email.toLowerCase()) {
+    updated.access.signer = [];
+    updated.accessSessions.signer = [];
+  }
   updated.notifications[role].acknowledgedThrough = Math.max(
     updated.notifications[role].acknowledgedThrough,
     currentSequence,
@@ -127,7 +150,6 @@ export async function processAgreementAction(
     && body.action.role === "signer"
     && signerEmailBefore !== updated.signer.email.toLowerCase()
   ) {
-    updated.access.signer = [];
     if (updated.status !== "draft") {
       const issued = issueAgreementAccess(updated, "signer", { replace: true });
       updated = issued.agreement;
@@ -142,7 +164,7 @@ export async function processAgreementAction(
 
   if (updated.status === "signed") {
     for (const recipient of ["author", "signer"] as PartyRole[]) {
-      const issued = issueAgreementAccess(updated, recipient);
+      const issued = issueAgreementAccess(updated, recipient, { replace: true });
       updated = issued.agreement;
       const url = `${origin}/deal/${updated.id}#access=${encodeURIComponent(issued.token)}`;
       updated.notifications[recipient].notifiedThrough = sequence;
@@ -152,7 +174,7 @@ export async function processAgreementAction(
     }
   } else if (updated.status === "declined" || updated.status === "voided") {
     const recipient = otherRole(role);
-    const issued = issueAgreementAccess(updated, recipient);
+    const issued = issueAgreementAccess(updated, recipient, { replace: true });
     updated = issued.agreement;
     const url = `${origin}/deal/${updated.id}#access=${encodeURIComponent(issued.token)}`;
     updated.notifications[recipient].notifiedThrough = sequence;
@@ -164,7 +186,7 @@ export async function processAgreementAction(
     if (recipient) {
       const notification = updated.notifications[recipient];
       if (approvalReset || notification.acknowledgedThrough >= notification.notifiedThrough) {
-        const issued = issueAgreementAccess(updated, recipient);
+        const issued = issueAgreementAccess(updated, recipient, { replace: true });
         updated = issued.agreement;
         const url = `${origin}/deal/${updated.id}#access=${encodeURIComponent(issued.token)}`;
         const kind = approvalReset ? "approval_reset" : updated.status === "ready" ? "signature_ready" : "action_required";
@@ -192,6 +214,17 @@ export async function processAgreementAction(
       );
     }
     throw error;
+  }
+
+  if (["invite", "resend_invitation", "sign", "decline", "void", "restore_version"].includes(body.action.type)) {
+    await recordSecurityEvent({
+      eventType: `agreement.${body.action.type}`,
+      agreementId: id,
+      actorRole: role,
+      actorSource: source,
+      ipAddress: requestIp(request),
+      metadata: { sequence: latestEventSequence(updated), version: updated.version },
+    });
   }
 
   const deliveryResults = await Promise.all(deliveries.map(async (delivery) => {

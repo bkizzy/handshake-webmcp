@@ -29,11 +29,20 @@ function renderEmail(content: AgreementEmailContent, url?: string) {
   const button = url && content.actionLabel
     ? `<a href="${escapeHtml(url)}" style="margin-top:27px;padding:13px 18px;display:inline-block;color:white;background:#2457d6;border-radius:8px;text-decoration:none;font-weight:700">${escapeHtml(content.actionLabel)}</a>`
     : "";
-  return `<div style="margin:0;padding:40px 20px;background:#f5f7fa;font-family:Arial,sans-serif;color:#172033"><div style="max-width:560px;margin:0 auto;padding:36px;background:white;border:1px solid #dfe4ec;border-radius:12px"><div style="font-size:18px;font-weight:700;color:#172033">Mutual Assent AI</div><p style="margin:32px 0 0;font-size:13px;color:#2457d6;font-weight:700;text-transform:uppercase;letter-spacing:.08em">${escapeHtml(content.eyebrow)}</p><h1 style="margin:10px 0 0;font-size:27px;line-height:1.2">${escapeHtml(content.heading)}</h1>${body}${button}<p style="margin:30px 0 0;color:#8a93a2;font-size:11px;line-height:1.5">${escapeHtml(content.footer)}</p></div></div>`;
+  const agentHandoff = url
+    ? `<div style="margin-top:28px;padding:20px;background:#f5f7fa;border:1px solid #dfe4ec;border-radius:10px"><div style="color:#172033;font-size:14px;font-weight:700">Want your agent to handle this?</div><p style="margin:7px 0 14px;color:#687287;font-size:13px;line-height:1.55">Provide this secure link to your agent and ask it to use Mutual Assent AI site tools. Your agent can review the agreement and perform available non-signing actions; signing is reserved for you.</p><a href="${escapeHtml(agentHandoffUrl(url))}" style="padding:10px 13px;display:inline-block;color:#2457d6;background:white;border:1px solid #b9c9eb;border-radius:7px;text-decoration:none;font-size:13px;font-weight:700">Copy link for your agent</a></div>`
+    : "";
+  return `<div style="margin:0;padding:40px 20px;background:#f5f7fa;font-family:Arial,sans-serif;color:#172033"><div style="max-width:560px;margin:0 auto;padding:36px;background:white;border:1px solid #dfe4ec;border-radius:12px"><div style="font-size:18px;font-weight:700;color:#172033">Mutual Assent AI</div><p style="margin:32px 0 0;font-size:13px;color:#2457d6;font-weight:700;text-transform:uppercase;letter-spacing:.08em">${escapeHtml(content.eyebrow)}</p><h1 style="margin:10px 0 0;font-size:27px;line-height:1.2">${escapeHtml(content.heading)}</h1>${body}${button}${agentHandoff}<p style="margin:30px 0 0;color:#8a93a2;font-size:11px;line-height:1.5">${escapeHtml(content.footer)}</p></div></div>`;
+}
+
+function agentHandoffUrl(url: string) {
+  const handoff = new URL(url);
+  handoff.pathname = handoff.pathname.replace(/^\/deal\//, "/handoff/");
+  return handoff.toString();
 }
 
 function renderText(content: AgreementEmailContent, url?: string) {
-  return [content.heading, "", content.body, url && content.actionLabel ? `\n${content.actionLabel}: ${url}` : "", "", content.footer]
+  return [content.heading, "", content.body, url && content.actionLabel ? `\n${content.actionLabel}: ${url}` : "", url ? `\nUsing an agent? Provide this secure link to your agent and ask it to use Mutual Assent AI site tools:\n${url}\n\nYour agent can review the agreement and perform available non-signing actions. Signing is reserved for you.` : "", "", content.footer]
     .filter((line) => line !== undefined)
     .join("\n");
 }

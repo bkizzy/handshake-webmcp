@@ -2,37 +2,39 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-function storageKey(id: string) {
-  return `handshake:agreement-access:${id}`;
-}
-
 export function useAgreementAccess(id: string) {
-  const [token, setToken] = useState("");
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    let active = true;
     const url = new URL(window.location.href);
     const fragment = new URLSearchParams(url.hash.replace(/^#/, ""));
-    const incoming = fragment.get("access") || url.searchParams.get("access");
-    if (incoming) {
-      window.sessionStorage.setItem(storageKey(id), incoming);
-      url.searchParams.delete("access");
-      fragment.delete("access");
-      url.hash = fragment.toString();
-      window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    const incoming = fragment.get("access") ?? "";
+
+    async function establishAccess() {
+      try {
+        if (incoming) {
+          const response = await fetch(`/api/agreements/${id}/access-session`, {
+            method: "POST",
+            headers: { authorization: `Bearer ${incoming}` },
+          });
+          if (!response.ok) return;
+          fragment.delete("access");
+          url.hash = fragment.toString();
+          window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+        }
+      } finally {
+        if (active) setReady(true);
+      }
     }
-    const storedToken = incoming || window.sessionStorage.getItem(storageKey(id)) || "";
-    queueMicrotask(() => {
-      setToken(storedToken);
-      setReady(true);
-    });
+
+    void establishAccess();
+    return () => { active = false; };
   }, [id]);
 
   const authHeaders = useCallback((headers: HeadersInit = {}) => {
-    const next = new Headers(headers);
-    if (token) next.set("authorization", `Bearer ${token}`);
-    return next;
-  }, [token]);
+    return new Headers(headers);
+  }, []);
 
-  return { ready, token, authHeaders };
+  return { ready, authHeaders };
 }

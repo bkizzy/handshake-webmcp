@@ -12,21 +12,16 @@ export function agreementAccessCookieName(id: string) {
   return `handshake_access_${id}`;
 }
 
-export async function resolveAgreementAccess(id: string, request: Request) {
+export async function resolveAgreementAccess(id: string) {
   let agreement = await getAgreementById(id);
-  if (!agreement) throw new AgreementError("Agreement not found.", "not_found", 404);
+  if (!agreement) throw new AgreementError("This link is invalid or has expired.", "invalid_access", 403);
   agreement = normalizeAgreement(agreement);
   const storedAgreement = agreement;
 
   const cookieStore = await cookies();
-  const requestToken = new URL(request.url).searchParams.get("token") ?? "";
-  const authorization = request.headers.get("authorization") ?? "";
-  const bearerToken = authorization.toLowerCase().startsWith("bearer ")
-    ? authorization.slice(7).trim()
-    : "";
-  const token = bearerToken || requestToken || cookieStore.get(agreementAccessCookieName(id))?.value || "";
-  const tokenRole = (Object.keys(storedAgreement.access) as PartyRole[]).find((candidate) =>
-    accessTokenMatches(storedAgreement.access[candidate], token),
+  const sessionToken = cookieStore.get(agreementAccessCookieName(id))?.value || "";
+  const tokenRole = (["author", "signer"] as PartyRole[]).find((candidate) =>
+    accessTokenMatches(storedAgreement.accessSessions[candidate], sessionToken),
   );
   const user = await getAuthenticatedUser();
   const profileRole = user

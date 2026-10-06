@@ -47,6 +47,64 @@ a.brand {
   text-decoration: none;
 }
 
+@font-face {
+  font-family: HandshakeGeist;
+  src: url('/fonts/handshake-geist.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+.brand-mark {
+  width: 152px;
+  height: 152px;
+  margin-left: -37px;
+  margin-right: -32px;
+  object-fit: contain;
+}
+
+.brand-wordmark {
+  width: 164px;
+  display: grid;
+  font-family: HandshakeGeist, ui-sans-serif, sans-serif;
+  font-size: 32px;
+  font-weight: 590;
+  letter-spacing: -.055em;
+  line-height: .82;
+  text-transform: lowercase;
+}
+
+.brand-wordmark-top { justify-self: start; }
+.brand-wordmark-bottom { display: inline-flex; align-items: baseline; justify-self: end; gap: 4px; }
+.brand-wordmark-bottom span:last-child { color: var(--blue); font-size: .82em; font-weight: 750; letter-spacing: -.07em; text-transform: uppercase; }
+
+.handoff-page {
+  min-height: 100vh;
+  padding: 70px 20px;
+  display: grid;
+  place-items: center;
+  background: var(--canvas);
+}
+
+.handoff-card {
+  width: min(540px, 100%);
+  padding: 42px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+
+.handoff-card .brand { justify-content: center; }
+.handoff-icon { width: 54px; height: 54px; margin: 32px auto 20px; display: grid; place-items: center; color: var(--blue); background: var(--blue-soft); border-radius: 14px; }
+.handoff-card h1 { margin: 10px 0 0; color: #263147; font-size: 32px; line-height: 1.12; letter-spacing: -.04em; }
+.handoff-card .intro { margin: 14px 0 28px; color: #657084; font-size: 16px; line-height: 1.6; }
+.handoff-card button,
+.handoff-card > a { width: 100%; min-height: 48px; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.handoff-card > a { text-decoration: none; }
+.invalid-link { margin-top: 24px; padding: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; color: #8b4a3d; background: #fff4f2; border-radius: 9px; }
+
 button,
 input,
 select,
@@ -229,5 +287,23 @@ button:active {
 @media (max-width: 680px) {
   .app-shell {
     width: min(100% - 24px, 1180px);
+  }
+
+  .handoff-card {
+    padding: 30px 22px;
+  }
+}
+
+@media (max-width: 760px) {
+  .brand-mark {
+    width: 88px;
+    height: 88px;
+    margin-left: -22px;
+    margin-right: -14px;
+  }
+
+  .brand-wordmark {
+    width: 122px;
+    font-size: 24px;
   }
 }

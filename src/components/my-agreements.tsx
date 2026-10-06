@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AgreementList } from "./agreement-list";
-import type { StoredAgreement } from "@/src/lib/agreements/types";
+import type { AgreementSummary } from "@/src/lib/agreements/types";
 
-export function MyAgreements({ agreements, initialTab = "in-progress" }: { agreements: StoredAgreement[]; initialTab?: "in-progress" | "executed" }) {
+export function MyAgreements({ agreements, initialTab = "in-progress" }: { agreements: AgreementSummary[]; initialTab?: "in-progress" | "executed" }) {
   const [tab, setTab] = useState<"in-progress" | "executed">(initialTab);
   const router = useRouter();
   const selectTab = (next: "in-progress" | "executed") => {

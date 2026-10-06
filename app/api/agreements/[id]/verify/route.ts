@@ -12,7 +12,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function GET(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
-    const { agreement: current } = await resolveAgreementAccess(id, request);
+    const { agreement: current } = await resolveAgreementAccess(id);
     let agreement = current;
     if (agreement.status !== "signed" || !agreement.execution) {
       throw new AgreementError("The execution seal is available after both parties sign.", "not_executed", 409);

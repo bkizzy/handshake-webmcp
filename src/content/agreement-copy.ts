@@ -41,7 +41,7 @@ export function invitationEmailCopy(input: { author: string; title: string; reci
     heading: `${input.author} invited you to review an agreement.`,
     body: `Review and redline ${input.title}. You can work directly or use a compatible browser agent. No account is required.`,
     actionLabel: "Review agreement",
-    footer: `This secure link is intended for ${input.recipientEmail}. Signing remains a human action.`,
+    footer: `This secure, single-use link is intended for ${input.recipientEmail}. Signing remains reserved for the human user.`,
   };
 }
 
@@ -52,7 +52,7 @@ export function actionRequiredEmailCopy(input: { title: string; eventCount: numb
     heading: "The other party updated the negotiation.",
     body: `${input.eventCount} new agreement action${input.eventCount === 1 ? " is" : "s are"} ready for review. Later changes are grouped into this same handoff until you return.`,
     actionLabel: "Review updates",
-    footer: "The secure link opens your party’s workspace. Private agent conversations are not included in the agreement record.",
+    footer: "The secure, single-use link opens your party’s workspace. Private agent conversations are not included in the agreement record.",
   };
 }
 
@@ -63,7 +63,7 @@ export function approvalResetEmailCopy(input: { title: string }): AgreementEmail
     heading: "A new redline changed the approved agreement.",
     body: `${input.title} is back in review. Previous approvals no longer apply; review the proposed change and approve the resulting version again.`,
     actionLabel: "Review new redline",
-    footer: "The secure link opens your party’s workspace. Signing remains unavailable until both parties approve the updated version.",
+    footer: "The secure, single-use link opens your party’s workspace. Signing remains unavailable until both parties approve the updated version.",
   };
 }
 
@@ -118,6 +118,6 @@ export function recoveryEmailCopy(input: { title: string; role: PartyRole; recip
     heading: `Open your ${roleLabel(input.role).toLowerCase()} workspace.`,
     body: `Use this new secure link to return to ${input.title}.`,
     actionLabel: "Open agreement",
-    footer: `This secure link is intended for ${input.recipientEmail}. Keep it private.`,
+    footer: `This secure, single-use link is intended for ${input.recipientEmail}. Keep it private.`,
   };
 }

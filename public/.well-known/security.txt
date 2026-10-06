@@ -1,0 +1,5 @@
+Contact: https://mutualassent.com/contact
+Expires: 2027-10-06T00:00:00Z
+Canonical: https://mutualassent.com/.well-known/security.txt
+Policy: https://mutualassent.com/terms
+Preferred-Languages: en

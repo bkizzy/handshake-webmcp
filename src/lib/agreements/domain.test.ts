@@ -8,6 +8,7 @@ import {
   accessTokenMatches,
   createAccessGrant,
   createAgreement,
+  exchangeAgreementAccess,
   executeAgreementAction,
   issueAgreementAccess,
   issueSignatureChallenge,
@@ -16,6 +17,7 @@ import {
 import { buildAgreementPdf } from "./pdf";
 import { sealSignedAgreement, verifyAgreementSeal } from "./seal";
 import { createAgreementSchema } from "./schemas";
+import { toAgreementSummary } from "./summary";
 import type { CreateAgreementInput, StoredAgreement } from "./types";
 
 const input: CreateAgreementInput = {
@@ -232,6 +234,7 @@ describe("agreement lifecycle", () => {
     const view = toAgreementView(stored, "author");
     const json = JSON.stringify(view);
     expect("access" in view).toBe(false);
+    expect("accessSessions" in view).toBe(false);
     expect(json).not.toContain(accessGrantsFor(stored.access.author)[0].tokenHash);
     expect(json).not.toContain("signatureChallenges");
     expect(json).not.toContain("processedActionKeys");
@@ -240,6 +243,23 @@ describe("agreement lifecycle", () => {
     expect(json).not.toContain("ipAddress");
     expect(json).not.toContain("userAgent");
     expect(json).not.toContain("canonicalJson");
+  });
+
+  it("serializes only a minimal agreement summary for the dashboard", () => {
+    const stored = createAgreement(input);
+    stored.ownerUserId = "user-private";
+    stored.profileAccess.author = "profile-private";
+    stored.processedActionKeys.push("private-idempotency-key");
+    stored.signatureChallenges.author = { codeHash: "private-code-hash", createdAt: stored.createdAt, expiresAt: stored.updatedAt, attempts: 0 };
+    const json = JSON.stringify(toAgreementSummary(stored));
+    expect(json).toContain(stored.id);
+    expect(json).not.toContain("access");
+    expect(json).not.toContain("ownerUserId");
+    expect(json).not.toContain("profileAccess");
+    expect(json).not.toContain("processedActionKeys");
+    expect(json).not.toContain("signatureChallenges");
+    expect(json).not.toContain("notifications");
+    expect(json).not.toContain("private-");
   });
 
   it("rejects oversized user-controlled agreement content", () => {
@@ -255,18 +275,19 @@ describe("agreement lifecycle", () => {
     expect(createAgreementSchema.safeParse({ ...input, termsAccepted: true }).success).toBe(true);
   });
 
-  it("supports concurrent party links and explicit revocation", () => {
+  it("replaces old links and exchanges a one-time link for a session", () => {
     const { token, grant } = createAccessGrant();
     expect(grant.tokenHash).not.toBe(token);
     expect(accessTokenMatches(grant, token)).toBe(true);
     const original = createAgreement(input);
     const first = issueAgreementAccess(original, "signer");
     const second = issueAgreementAccess(first.agreement, "signer");
-    expect(accessTokenMatches(second.agreement.access.signer, first.token)).toBe(true);
+    expect(accessTokenMatches(second.agreement.access.signer, first.token)).toBe(false);
     expect(accessTokenMatches(second.agreement.access.signer, second.token)).toBe(true);
-    const replacement = issueAgreementAccess(second.agreement, "signer", { replace: true });
-    expect(accessTokenMatches(replacement.agreement.access.signer, first.token)).toBe(false);
-    expect(accessTokenMatches(replacement.agreement.access.signer, replacement.token)).toBe(true);
+    const exchanged = exchangeAgreementAccess(second.agreement, second.token);
+    expect(exchanged.role).toBe("signer");
+    expect(accessTokenMatches(exchanged.agreement.access.signer, second.token)).toBe(false);
+    expect(accessTokenMatches(exchanged.agreement.accessSessions.signer, exchanged.sessionToken)).toBe(true);
   });
 
   it("provides monotonic event cursors", () => {

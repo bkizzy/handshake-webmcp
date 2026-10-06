@@ -12,7 +12,7 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const body = acknowledgeRequestSchema.parse(await request.json());
-    const { agreement, role } = await resolveAgreementAccess(id, request);
+    const { agreement, role } = await resolveAgreementAccess(id);
     const updated = acknowledgeAgreementUpdates(agreement, role, body.throughSequence);
     if (updated.updatedAt !== agreement.updatedAt) {
       await saveAgreement(updated, { expectedUpdatedAt: agreement.updatedAt });

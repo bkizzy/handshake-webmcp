@@ -191,11 +191,19 @@ export type NotificationState = {
 
 export type StoredAgreement = Agreement & {
   access: Partial<Record<PartyRole, AccessGrant | AccessGrant[]>>;
+  accessSessions: Partial<Record<PartyRole, AccessGrant | AccessGrant[]>>;
   ownerUserId?: string;
   profileAccess: Partial<Record<PartyRole, string>>;
   processedActionKeys: string[];
   signatureChallenges: Partial<Record<PartyRole, SignatureChallenge>>;
   notifications: Record<PartyRole, NotificationState>;
+};
+
+export type AgreementSummary = Pick<Agreement, "id" | "title" | "status" | "version" | "updatedAt"> & {
+  counterpartyLegalName: string;
+  hasOpenRedlines: boolean;
+  readiness: Record<PartyRole, boolean>;
+  signedRoles: PartyRole[];
 };
 
 export type AgreementView = Agreement & {

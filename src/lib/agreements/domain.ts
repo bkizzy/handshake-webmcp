@@ -21,7 +21,8 @@ import type {
 } from "./types";
 
 const terminalStatuses = new Set(["signed", "declined", "voided"]);
-const accessLifetimeMs = 90 * 24 * 60 * 60 * 1000;
+const accessLifetimeMs = 7 * 24 * 60 * 60 * 1000;
+const accessSessionLifetimeMs = 7 * 24 * 60 * 60 * 1000;
 const signatureCodeLifetimeMs = 10 * 60 * 1000;
 
 export class AgreementError extends Error {
@@ -52,15 +53,23 @@ function sha256(value: string) {
   return createHash("sha256").update(value).digest("hex");
 }
 
-export function createAccessGrant() {
+function createGrant(lifetimeMs: number) {
   const token = randomBytes(32).toString("base64url");
   const createdAt = now();
   const grant: AccessGrant = {
     tokenHash: sha256(token),
     createdAt,
-    expiresAt: new Date(Date.parse(createdAt) + accessLifetimeMs).toISOString(),
+    expiresAt: new Date(Date.parse(createdAt) + lifetimeMs).toISOString(),
   };
   return { token, grant };
+}
+
+export function createAccessGrant() {
+  return createGrant(accessLifetimeMs);
+}
+
+export function createAccessSessionGrant() {
+  return createGrant(accessSessionLifetimeMs);
 }
 
 export function accessGrantsFor(value: AccessGrant | AccessGrant[] | undefined) {
@@ -103,6 +112,7 @@ export function normalizeAgreement(current: StoredAgreement): StoredAgreement {
   agreement.notifications.signer ??= defaultNotificationState();
   agreement.processedActionKeys ??= [];
   agreement.access ??= {};
+  agreement.accessSessions ??= {};
   agreement.profileAccess ??= agreement.ownerUserId ? { author: agreement.ownerUserId } : {};
   if (agreement.ownerUserId) agreement.profileAccess.author ??= agreement.ownerUserId;
 
@@ -281,6 +291,7 @@ export function createAgreement(
     versions: [],
     audit: [],
     access: { author: access },
+    accessSessions: {},
     profileAccess: {},
     processedActionKeys: [],
     signatureChallenges: {},
@@ -304,10 +315,27 @@ export function issueAgreementAccess(
 ) {
   const agreement = normalizeAgreement(current);
   const { token, grant } = createAccessGrant();
-  const currentGrants = options.replace ? [] : accessGrantsFor(agreement.access[role]);
+  const replace = options.replace ?? true;
+  const currentGrants = replace ? [] : accessGrantsFor(agreement.access[role]);
   agreement.access[role] = [...currentGrants.filter((item) => Date.parse(item.expiresAt) > Date.now()), grant].slice(-5);
   advanceUpdatedAt(agreement);
   return { agreement, token };
+}
+
+export function exchangeAgreementAccess(current: StoredAgreement, token: string) {
+  const agreement = normalizeAgreement(current);
+  const role = (["author", "signer"] as PartyRole[]).find((candidate) =>
+    accessTokenMatches(agreement.access[candidate], token),
+  );
+  assert(role, "This link is invalid or has expired.", "invalid_access", 403);
+
+  agreement.access[role] = accessGrantsFor(agreement.access[role]).filter(
+    (grant) => !accessTokenMatches(grant, token) && Date.parse(grant.expiresAt) > Date.now(),
+  );
+  const { token: sessionToken, grant } = createAccessSessionGrant();
+  agreement.accessSessions[role] = [grant];
+  advanceUpdatedAt(agreement);
+  return { agreement, role, sessionToken, expiresAt: grant.expiresAt };
 }
 
 export function acknowledgeAgreementUpdates(
@@ -637,6 +665,7 @@ export function toAgreementView(current: StoredAgreement, viewerRole: PartyRole)
   const agreement = normalizeAgreement(current);
   const cloned = structuredClone(agreement);
   delete (cloned as Partial<StoredAgreement>).access;
+  delete (cloned as Partial<StoredAgreement>).accessSessions;
   delete cloned.ownerUserId;
   delete (cloned as Partial<StoredAgreement>).profileAccess;
   delete (cloned as Partial<StoredAgreement>).processedActionKeys;

@@ -11,7 +11,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function GET(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
-    const { agreement: current, role, profile } = await resolveAgreementAccess(id, request);
+    const { agreement: current, role, profile } = await resolveAgreementAccess(id);
     let agreement = current;
     if (agreement.status === "signed" && !agreement.execution?.canonicalJson) {
       agreement = await sealSignedAgreement(agreement);
