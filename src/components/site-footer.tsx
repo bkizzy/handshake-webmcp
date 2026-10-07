@@ -8,6 +8,7 @@ export function SiteFooter({ note = "Electronic signature for the agentic era." 
         <nav aria-label="Legal and support">
           <Link href="/terms">Terms</Link>
           <Link href="/privacy">Privacy</Link>
+          <Link href="/faq">FAQ</Link>
           <Link href="/contact">Contact</Link>
         </nav>
         <span>{note}</span>

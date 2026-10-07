@@ -155,8 +155,8 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
         execute: async () => {
           const latest = await freshAgreement();
           await acknowledge(latest.eventSequence).catch(() => undefined);
-          const open = latest.redlines.filter((redline) => redline.status === "open");
-          return textResult(`${open.length} open redline${open.length === 1 ? "" : "s"} on version ${latest.version}.`, { redlines: latest.redlines, version: latest.version, eventSequence: latest.eventSequence });
+          const open = latest.redlines.filter((redline) => redline.status === "open" || redline.status === "pending_confirmation");
+          return textResult(`${open.length} pending redline${open.length === 1 ? "" : "s"} on version ${latest.version}.`, { redlines: latest.redlines, version: latest.version, eventSequence: latest.eventSequence });
         },
       },
       {
@@ -284,6 +284,57 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
         execute: async (input) => {
           const result = await performAction({ type: "propose_redline", target: targetFromInput(input), proposedValue: requiredString(input, "proposedValue"), rationale: optionalString(input, "rationale") }, "agent", optionalString(input, "requestId") || undefined);
           return textResult("Recorded the proposal for the other party.", { agreement: result.agreement, redline: result.agreement.redlines.at(-1) ?? null });
+        },
+      });
+    }
+
+    if (agreement.permissions.canRecordCounterpartyRedlines) {
+      tools.push({
+        name: "handshake_record_counterparty_revision",
+        description: "Record one revision the signer sent outside Mutual Assent AI, such as by email. This creates a pending item and emails the signer for confirmation. It is not attributed as the signer's proposal unless the signer confirms or corrects it. The author and author's agent can never confirm on the signer's behalf.",
+        inputSchema: objectSchema({
+          requestId: requestIdSchema,
+          targetKind: { type: "string", enum: ["field", "section"] },
+          targetId: stringSchema("Exact field or section ID."),
+          proposedValue: stringSchema("Complete replacement text received from the signer."),
+          rationale: stringSchema("Context from the signer's email, without private author instructions."),
+        }, ["requestId", "targetKind", "targetId", "proposedValue", "rationale"]),
+        annotations: { ...commonAnnotations, openWorldHint: true, idempotentHint: true },
+        execute: async (input) => {
+          const result = await performAction({
+            type: "record_counterparty_redline",
+            target: targetFromInput(input),
+            proposedValue: requiredString(input, "proposedValue"),
+            rationale: optionalString(input, "rationale"),
+          }, "agent", optionalString(input, "requestId") || undefined);
+          return textResult("Recorded the emailed revision as pending counterparty confirmation.", { agreement: result.agreement, redline: result.agreement.redlines.at(-1) ?? null });
+        },
+      });
+    }
+
+    if (agreement.permissions.canReviewEmailedRedlines) {
+      tools.push({
+        name: "handshake_review_emailed_revision",
+        description: "As the signer, confirm, correct, or reject a revision that the author recorded from your email. Confirm only when it accurately reflects the signer's requested change. Correct requires complete replacement text. This establishes signer attribution but does not sign the agreement.",
+        inputSchema: objectSchema({
+          requestId: requestIdSchema,
+          redlineId: stringSchema("Pending emailed-revision ID."),
+          decision: { type: "string", enum: ["confirm", "correct", "reject"] },
+          correctedValue: stringSchema("Complete replacement text, required for correct."),
+          rationale: stringSchema("Optional context for a correction."),
+        }, ["requestId", "redlineId", "decision"]),
+        annotations: { ...commonAnnotations, idempotentHint: true },
+        execute: async (input) => {
+          const decision = requiredString(input, "decision");
+          if (!["confirm", "correct", "reject"].includes(decision)) throw new Error("decision must be confirm, correct, or reject.");
+          const result = await performAction({
+            type: "review_emailed_redline",
+            redlineId: requiredString(input, "redlineId"),
+            decision: decision as "confirm" | "correct" | "reject",
+            correctedValue: optionalString(input, "correctedValue") || undefined,
+            rationale: optionalString(input, "rationale") || undefined,
+          }, "agent", optionalString(input, "requestId") || undefined);
+          return textResult(`Recorded the signer's ${decision} decision.`, { agreement: result.agreement });
         },
       });
     }

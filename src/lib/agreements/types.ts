@@ -46,7 +46,7 @@ export type RedlineTarget =
   | { kind: "field"; id: keyof AgreementFields }
   | { kind: "section"; id: string };
 
-export type RedlineStatus = "open" | "accepted" | "rejected" | "superseded";
+export type RedlineStatus = "pending_confirmation" | "open" | "accepted" | "rejected" | "superseded";
 
 export type Redline = {
   id: string;
@@ -62,6 +62,14 @@ export type Redline = {
   resolvedBy?: PartyRole;
   resolvedBySource?: ActorSource;
   supersededBy?: string;
+  recordedFromEmail?: {
+    recordedBy: PartyRole;
+    recordedBySource: ActorSource;
+    recordedAt: string;
+    originalProposedValue: string;
+    confirmedAt?: string;
+    rejectedAt?: string;
+  };
 };
 
 export type Signature = {
@@ -84,6 +92,10 @@ export type AuditEventType =
   | "participant.invited"
   | "participant.reinvited"
   | "redline.proposed"
+  | "redline.email_recorded"
+  | "redline.email_confirmed"
+  | "redline.email_corrected"
+  | "redline.email_rejected"
   | "redline.accepted"
   | "redline.rejected"
   | "redline.countered"
@@ -218,6 +230,8 @@ export type AgreementView = Agreement & {
     canCorrectParticipants: boolean;
     canInvite: boolean;
     canRedline: boolean;
+    canRecordCounterpartyRedlines: boolean;
+    canReviewEmailedRedlines: boolean;
     canRespondToRedlines: boolean;
     canMarkReady: boolean;
     canSign: boolean;
@@ -244,6 +258,14 @@ export type AgreementAction =
   | { type: "update_participant"; role: PartyRole; participant: Partial<Omit<Party, "role">> }
   | { type: "invite" }
   | { type: "propose_redline"; target: RedlineTarget; proposedValue: string; rationale: string }
+  | { type: "record_counterparty_redline"; target: RedlineTarget; proposedValue: string; rationale: string }
+  | {
+      type: "review_emailed_redline";
+      redlineId: string;
+      decision: "confirm" | "correct" | "reject";
+      correctedValue?: string;
+      rationale?: string;
+    }
   | {
       type: "respond_redline";
       redlineId: string;
@@ -286,6 +308,9 @@ export type CertificateTermHistory = {
     action: "proposed" | "accepted" | "rejected" | "countered";
     value?: string;
     rationale?: string;
+    provenance?: "workspace" | "email_confirmed";
+    recordedBy?: PartyRole;
+    recordedBySource?: ActorSource;
   }>;
   agreedAt?: string;
 };

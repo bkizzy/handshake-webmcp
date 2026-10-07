@@ -17,6 +17,7 @@ import {
   sendApprovalReset,
   sendAgreementCompleted,
   sendAgreementEnded,
+  sendCounterpartyConfirmation,
   sendReviewInvitation,
   sendSignatureReady,
 } from "@/src/lib/email";
@@ -24,7 +25,7 @@ import { consumeRateLimit, recordSecurityEvent, requestIp } from "@/src/lib/secu
 
 type Delivery = {
   role: PartyRole;
-  kind: "invitation" | "action_required" | "approval_reset" | "signature_ready" | "completed" | "ended";
+  kind: "invitation" | "counterparty_confirmation" | "action_required" | "approval_reset" | "signature_ready" | "completed" | "ended";
   email: string;
   url: string;
   throughSequence: number;
@@ -35,7 +36,7 @@ function otherRole(role: PartyRole): PartyRole {
 }
 
 function actionRecipient(actionType: string, actorRole: PartyRole) {
-  if (["update_participant", "restore_version", "propose_redline", "respond_redline", "mark_ready", "sign", "decline", "void"].includes(actionType)) {
+  if (["update_participant", "restore_version", "propose_redline", "record_counterparty_redline", "review_emailed_redline", "respond_redline", "mark_ready", "sign", "decline", "void"].includes(actionType)) {
     return otherRole(actorRole);
   }
   return null;
@@ -129,7 +130,7 @@ export async function processAgreementAction(
   const deliveries: Delivery[] = [];
   let invitation: { email: string; url?: string; delivered?: boolean } | undefined;
   const sequence = latestEventSequence(updated);
-  const approvalReset = body.action.type === "propose_redline"
+  const approvalReset = (body.action.type === "propose_redline" || body.action.type === "record_counterparty_redline")
     && (current.status === "ready" || current.readiness.author || current.readiness.signer)
     && !updated.readiness.author
     && !updated.readiness.signer;
@@ -185,11 +186,15 @@ export async function processAgreementAction(
     const recipient = actionRecipient(body.action.type, role);
     if (recipient) {
       const notification = updated.notifications[recipient];
-      if (approvalReset || notification.acknowledgedThrough >= notification.notifiedThrough) {
+      const firstPendingConfirmation = body.action.type === "record_counterparty_redline"
+        && notification.lastKind !== "counterparty_confirmation";
+      if (approvalReset || firstPendingConfirmation || notification.acknowledgedThrough >= notification.notifiedThrough) {
         const issued = issueAgreementAccess(updated, recipient, { replace: true });
         updated = issued.agreement;
         const url = `${origin}/deal/${updated.id}#access=${encodeURIComponent(issued.token)}`;
-        const kind = approvalReset ? "approval_reset" : updated.status === "ready" ? "signature_ready" : "action_required";
+        const kind = body.action.type === "record_counterparty_redline"
+          ? "counterparty_confirmation"
+          : approvalReset ? "approval_reset" : updated.status === "ready" ? "signature_ready" : "action_required";
         updated.notifications[recipient].notifiedThrough = sequence;
         updated.notifications[recipient].lastKind = kind;
         updated.notifications[recipient].lastSentAt = new Date().toISOString();
@@ -238,6 +243,7 @@ export async function processAgreementAction(
       ).length);
       delivered = await sendActionRequired(updated, delivery.role, delivery.url, count);
     }
+    if (delivery.kind === "counterparty_confirmation") delivered = await sendCounterpartyConfirmation(updated, delivery.url);
     if (delivery.kind === "approval_reset") delivered = await sendApprovalReset(updated, delivery.role, delivery.url);
     if (delivery.kind === "signature_ready") delivered = await sendSignatureReady(updated, delivery.role, delivery.url);
     if (delivery.kind === "completed") delivered = await sendAgreementCompleted(updated, delivery.role, delivery.url);

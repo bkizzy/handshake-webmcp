@@ -242,7 +242,7 @@ function createRedline(
   const currentValue = baseValue ?? getTargetValue(agreement, target);
   assert(currentValue !== proposedValue, "The proposal must change the document.", "no_change");
   assert(
-    !agreement.redlines.some((item) => item.status === "open" && item.target.kind === target.kind && item.target.id === target.id),
+    !agreement.redlines.some((item) => (item.status === "open" || item.status === "pending_confirmation") && item.target.kind === target.kind && item.target.id === target.id),
     "Resolve the existing proposal for this term before adding another.",
     "target_has_open_redline",
     409,
@@ -474,7 +474,7 @@ export function executeAgreementAction(
       const historical = agreement.versions.find((item) => item.version === action.version);
       assert(historical, "The requested version does not exist.", "version_not_found", 404);
       assert(historical.version !== agreement.version, "That version is already current.", "version_current", 409);
-      for (const redline of agreement.redlines.filter((item) => item.status === "open")) {
+      for (const redline of agreement.redlines.filter((item) => item.status === "open" || item.status === "pending_confirmation")) {
         redline.status = "superseded";
         redline.resolvedAt = now();
         redline.resolvedBy = context.role;
@@ -546,6 +546,74 @@ export function executeAgreementAction(
       });
       return agreement;
     }
+    case "record_counterparty_redline": {
+      assert(context.role === "author", "Only the author may record revisions received from the counterparty.", "forbidden", 403);
+      assert(
+        agreement.status === "review" || agreement.status === "ready",
+        "Counterparty revisions can be recorded after the agreement is invited.",
+        "not_in_review",
+        409,
+      );
+      const redline = createRedline(
+        agreement,
+        { ...context, role: "signer" },
+        action.target,
+        action.proposedValue,
+        action.rationale,
+      );
+      redline.status = "pending_confirmation";
+      redline.recordedFromEmail = {
+        recordedBy: "author",
+        recordedBySource: context.source,
+        recordedAt: redline.createdAt,
+        originalProposedValue: redline.proposedValue,
+      };
+      audit(agreement, context, "redline.email_recorded", `Recorded an emailed counterparty revision to ${redline.target.id} for confirmation`, {
+        redlineId: redline.id,
+        target: redline.target,
+      });
+      return agreement;
+    }
+    case "review_emailed_redline": {
+      assert(context.role === "signer", "Only the counterparty may confirm revisions attributed to them.", "forbidden", 403);
+      assert(agreement.status === "review", "Revision confirmation is available during review.", "not_in_review", 409);
+      const redline = agreement.redlines.find((item) => item.id === action.redlineId);
+      assert(redline, "The recorded revision does not exist.", "redline_not_found", 404);
+      assert(redline.status === "pending_confirmation" && redline.recordedFromEmail, "This revision is not awaiting confirmation.", "redline_resolved", 409);
+      const reviewedAt = now();
+      redline.resolvedBy = "signer";
+      redline.resolvedBySource = context.source;
+      if (action.decision === "reject") {
+        redline.status = "rejected";
+        redline.resolvedAt = reviewedAt;
+        redline.recordedFromEmail.rejectedAt = reviewedAt;
+        advanceUpdatedAt(agreement);
+        audit(agreement, context, "redline.email_rejected", `Rejected attribution of an emailed revision to ${redline.target.id}`, { redlineId: redline.id });
+        return agreement;
+      }
+      if (action.decision === "correct") {
+        const correctedValue = action.correctedValue;
+        assert(typeof correctedValue === "string" && correctedValue.trim(), "Corrected revision text is required.", "correction_required");
+        assert(correctedValue !== redline.currentValue, "The correction must change the document.", "no_change");
+        redline.proposedValue = correctedValue;
+        redline.rationale = action.rationale?.trim() || redline.rationale;
+      }
+      redline.status = "open";
+      redline.proposedBySource = context.source;
+      redline.resolvedAt = undefined;
+      redline.resolvedBy = undefined;
+      redline.resolvedBySource = undefined;
+      redline.recordedFromEmail.confirmedAt = reviewedAt;
+      advanceUpdatedAt(agreement);
+      audit(
+        agreement,
+        context,
+        action.decision === "correct" ? "redline.email_corrected" : "redline.email_confirmed",
+        `${action.decision === "correct" ? "Corrected and confirmed" : "Confirmed"} an emailed revision to ${redline.target.id}`,
+        { redlineId: redline.id },
+      );
+      return agreement;
+    }
     case "respond_redline": {
       assert(agreement.status === "review", "Redline responses are available during review.", "not_in_review", 409);
       const redline = agreement.redlines.find((item) => item.id === action.redlineId);
@@ -593,7 +661,7 @@ export function executeAgreementAction(
     }
     case "mark_ready": {
       assert(agreement.status === "review", "The agreement is not in review.", "not_in_review", 409);
-      assert(!agreement.redlines.some((item) => item.status === "open"), "Resolve all open redlines first.", "open_redlines", 409);
+      assert(!agreement.redlines.some((item) => item.status === "open" || item.status === "pending_confirmation"), "Resolve all pending redlines first.", "open_redlines", 409);
       assertParticipantComplete(agreement[context.role], context.role);
       agreement.readiness[context.role] = true;
       advanceUpdatedAt(agreement);
@@ -678,7 +746,7 @@ export function toAgreementView(current: StoredAgreement, viewerRole: PartyRole)
     delete signature.userAgent;
   }
   const publicAgreement = cloned as Agreement;
-  const openRedlines = agreement.redlines.some((item) => item.status === "open");
+  const openRedlines = agreement.redlines.some((item) => item.status === "open" || item.status === "pending_confirmation");
   const closed = terminalStatuses.has(agreement.status);
   return {
     ...publicAgreement,
@@ -690,6 +758,9 @@ export function toAgreementView(current: StoredAgreement, viewerRole: PartyRole)
       canCorrectParticipants: !closed && !agreement.signatures.author && !agreement.signatures.signer,
       canInvite: viewerRole === "author" && agreement.status === "draft",
       canRedline: agreement.status === "review" || agreement.status === "ready",
+      canRecordCounterpartyRedlines: viewerRole === "author" && (agreement.status === "review" || agreement.status === "ready"),
+      canReviewEmailedRedlines:
+        viewerRole === "signer" && agreement.status === "review" && agreement.redlines.some((item) => item.status === "pending_confirmation"),
       canRespondToRedlines:
         agreement.status === "review" &&
         agreement.redlines.some((item) => item.status === "open" && item.proposedBy !== viewerRole),

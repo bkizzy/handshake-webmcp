@@ -90,6 +90,19 @@ const agreementActionSchema = z.discriminatedUnion("type", [
     rationale: z.string().trim().max(5000),
   }),
   z.object({
+    type: z.literal("record_counterparty_redline"),
+    target: redlineTargetSchema,
+    proposedValue: z.string().trim().min(1).max(50_000),
+    rationale: z.string().trim().max(5000),
+  }),
+  z.object({
+    type: z.literal("review_emailed_redline"),
+    redlineId: z.string().uuid(),
+    decision: z.enum(["confirm", "correct", "reject"]),
+    correctedValue: z.string().max(50_000).optional(),
+    rationale: z.string().max(5000).optional(),
+  }),
+  z.object({
     type: z.literal("respond_redline"),
     redlineId: z.string().uuid(),
     decision: z.enum(["accept", "reject", "counter"]),

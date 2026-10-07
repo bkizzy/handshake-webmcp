@@ -34,12 +34,12 @@ export type AgreementEmailContent = {
   footer: string;
 };
 
-export function invitationEmailCopy(input: { author: string; title: string; recipientEmail: string }): AgreementEmailContent {
+export function invitationEmailCopy(input: { author: string; authorEmail: string; title: string; recipientEmail: string }): AgreementEmailContent {
   return {
     subject: `${input.author} invited you to review ${input.title}`,
     eyebrow: "Agreement review",
     heading: `${input.author} invited you to review an agreement.`,
-    body: `Review and redline ${input.title}. You can work directly or use a compatible browser agent. No account is required.`,
+    body: `Review and redline ${input.title}. You can work directly or use a compatible browser agent. No account is required. If your agent cannot access Mutual Assent AI, download the agreement and ask it to review it. Then reply to this email with either the revised document or a list of proposed revisions. Your reply will go directly to ${input.author} at ${input.authorEmail}.`,
     actionLabel: "Review agreement",
     footer: `This secure, single-use link is intended for ${input.recipientEmail}. Signing remains reserved for the human user.`,
   };
@@ -53,6 +53,17 @@ export function actionRequiredEmailCopy(input: { title: string; eventCount: numb
     body: `${input.eventCount} new agreement action${input.eventCount === 1 ? " is" : "s are"} ready for review. Later changes are grouped into this same handoff until you return.`,
     actionLabel: "Review updates",
     footer: "The secure, single-use link opens your party’s workspace. Private agent conversations are not included in the agreement record.",
+  };
+}
+
+export function counterpartyConfirmationEmailCopy(input: { title: string; author: string }): AgreementEmailContent {
+  return {
+    subject: `Confirm revisions recorded for ${input.title}`,
+    eyebrow: "Confirmation requested",
+    heading: `${input.author} recorded revisions received from you by email.`,
+    body: "Review each recorded revision and confirm, correct, or reject it. Nothing is attributed to you as a proposal until you confirm or correct it.",
+    actionLabel: "Review recorded revisions",
+    footer: "The secure, single-use link opens your counterparty workspace. Signing remains reserved for the human user.",
   };
 }
 

@@ -2,6 +2,7 @@ import {
   actionRequiredEmailCopy,
   approvalResetEmailCopy,
   completedEmailCopy,
+  counterpartyConfirmationEmailCopy,
   endedEmailCopy,
   invitationEmailCopy,
   recoveryEmailCopy,
@@ -47,7 +48,11 @@ function renderText(content: AgreementEmailContent, url?: string) {
     .join("\n");
 }
 
-async function sendEmail(to: string, content: AgreementEmailContent, url?: string) {
+function senderName(value = "Mutual Assent AI") {
+  return value.replace(/[\r\n<>\"]/g, " ").replace(/\s+/g, " ").trim().slice(0, 120) || "Mutual Assent AI";
+}
+
+async function sendEmail(to: string, content: AgreementEmailContent, url?: string, replyTo?: string, fromName?: string) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   if (!apiKey || !from) return false;
@@ -57,8 +62,9 @@ async function sendEmail(to: string, content: AgreementEmailContent, url?: strin
       method: "POST",
       headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
       body: JSON.stringify({
-        from: `Mutual Assent AI <${senderAddress.trim()}>`,
+        from: `${senderName(fromName)} <${senderAddress.trim()}>`,
         to: [to],
+        ...(replyTo ? { reply_to: replyTo } : {}),
         subject: content.subject,
         html: renderEmail(content, url),
         text: renderText(content, url),
@@ -75,9 +81,10 @@ async function sendEmail(to: string, content: AgreementEmailContent, url?: strin
 export function sendReviewInvitation(agreement: StoredAgreement, url: string) {
   return sendEmail(agreement.signer.email, invitationEmailCopy({
     author: agreement.author.legalName,
+    authorEmail: agreement.author.email,
     title: agreement.title,
     recipientEmail: agreement.signer.email,
-  }), url);
+  }), url, agreement.author.email, `${agreement.author.legalName} via Mutual Assent AI`);
 }
 
 export function sendActionRequired(
@@ -87,6 +94,16 @@ export function sendActionRequired(
   eventCount: number,
 ) {
   return sendEmail(agreement[role].email, actionRequiredEmailCopy({ title: agreement.title, eventCount }), url);
+}
+
+export function sendCounterpartyConfirmation(agreement: StoredAgreement, url: string) {
+  return sendEmail(
+    agreement.signer.email,
+    counterpartyConfirmationEmailCopy({ title: agreement.title, author: agreement.author.legalName }),
+    url,
+    agreement.author.email,
+    `${agreement.author.legalName} via Mutual Assent AI`,
+  );
 }
 
 export function sendApprovalReset(agreement: StoredAgreement, role: PartyRole, url: string) {

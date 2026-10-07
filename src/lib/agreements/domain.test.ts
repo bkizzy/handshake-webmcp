@@ -95,6 +95,74 @@ describe("agreement lifecycle", () => {
     expect(agreement.audit.at(-1)).toMatchObject({ actorRole: "signer", actorSource: "human", type: "redline.countered" });
   });
 
+  it("keeps emailed revisions pending until the counterparty confirms attribution", () => {
+    let agreement = executeAgreementAction(invitedAgreement(), authorHuman, {
+      type: "record_counterparty_redline",
+      target: { kind: "field", id: "purpose" },
+      proposedValue: "a limited product evaluation",
+      rationale: "Received by email from Sam.",
+    });
+    const pending = agreement.redlines[0];
+    expect(pending).toMatchObject({ proposedBy: "signer", status: "pending_confirmation" });
+    expect(pending.recordedFromEmail).toMatchObject({ recordedBy: "author", recordedBySource: "human" });
+    expect(toAgreementView(agreement, "author").permissions.canMarkReady).toBe(false);
+    expect(captureError(() => executeAgreementAction(agreement, authorHuman, { type: "review_emailed_redline", redlineId: pending.id, decision: "confirm" })).code).toBe("forbidden");
+
+    agreement = executeAgreementAction(agreement, signerAgent, { type: "review_emailed_redline", redlineId: pending.id, decision: "confirm" });
+    expect(agreement.redlines[0]).toMatchObject({ proposedBy: "signer", proposedBySource: "agent", status: "open" });
+    expect(agreement.redlines[0].recordedFromEmail?.confirmedAt).toBeTruthy();
+    expect(agreement.audit.at(-1)).toMatchObject({ actorRole: "signer", actorSource: "agent", type: "redline.email_confirmed" });
+  });
+
+  it("lets the counterparty correct or reject a revision recorded from email", () => {
+    const recorded = executeAgreementAction(invitedAgreement(), authorHuman, {
+      type: "record_counterparty_redline",
+      target: { kind: "field", id: "purpose" },
+      proposedValue: "an inaccurate emailed revision",
+      rationale: "Received by email.",
+    });
+    const corrected = executeAgreementAction(recorded, signerHuman, {
+      type: "review_emailed_redline",
+      redlineId: recorded.redlines[0].id,
+      decision: "correct",
+      correctedValue: "the counterparty's corrected revision",
+      rationale: "Corrected before attribution.",
+    });
+    expect(corrected.redlines[0]).toMatchObject({ status: "open", proposedValue: "the counterparty's corrected revision", proposedBy: "signer", proposedBySource: "human" });
+    expect(corrected.redlines[0].recordedFromEmail?.originalProposedValue).toBe("an inaccurate emailed revision");
+
+    const otherRecorded = executeAgreementAction(invitedAgreement(), authorHuman, {
+      type: "record_counterparty_redline",
+      target: { kind: "field", id: "purpose" },
+      proposedValue: "not requested by the counterparty",
+      rationale: "Received by email.",
+    });
+    const rejected = executeAgreementAction(otherRecorded, signerHuman, {
+      type: "review_emailed_redline",
+      redlineId: otherRecorded.redlines[0].id,
+      decision: "reject",
+    });
+    expect(rejected.redlines[0]).toMatchObject({ status: "rejected", resolvedBy: "signer" });
+    expect(rejected.redlines[0].recordedFromEmail?.confirmedAt).toBeUndefined();
+  });
+
+  it("records confirmed email provenance in the signed negotiation certificate", async () => {
+    let agreement = executeAgreementAction(invitedAgreement(), authorHuman, {
+      type: "record_counterparty_redline",
+      target: { kind: "field", id: "purpose" },
+      proposedValue: "a confirmed product evaluation",
+      rationale: "Received by email.",
+    });
+    agreement = executeAgreementAction(agreement, signerAgent, { type: "review_emailed_redline", redlineId: agreement.redlines[0].id, decision: "confirm" });
+    agreement = executeAgreementAction(agreement, authorHuman, { type: "respond_redline", redlineId: agreement.redlines[0].id, decision: "accept" });
+    agreement = executeAgreementAction(agreement, authorHuman, { type: "mark_ready" });
+    agreement = executeAgreementAction(agreement, signerHuman, { type: "mark_ready" });
+    agreement = signedBy(signedBy(agreement, "author"), "signer");
+    agreement = await sealSignedAgreement(agreement);
+    const event = buildNegotiationCertificate(agreement).termHistory.find((term) => term.id === "field:purpose")?.events[0];
+    expect(event).toMatchObject({ party: "signer", source: "agent", action: "proposed", provenance: "email_confirmed", recordedBy: "author", recordedBySource: "human" });
+  });
+
   it("lets each party identify only its own previously known information", () => {
     const agreement = invitedAgreement();
     expect(captureError(() => executeAgreementAction(agreement, authorHuman, { type: "propose_redline", target: { kind: "field", id: "signerPreviouslyKnownInformation" }, proposedValue: "Author-supplied signer entry", rationale: "Wrong party." })).code).toBe("forbidden");

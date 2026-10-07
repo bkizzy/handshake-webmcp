@@ -39,8 +39,9 @@ export function buildNegotiationCertificate(agreement: Agreement): NegotiationCe
       const finalValue = targetValue(agreement.fields, agreement.sections, target);
       const events: CertificateTermHistory["events"] = [];
       for (const redline of redlines) {
+        const unconfirmedEmailRevision = redline.recordedFromEmail && !redline.recordedFromEmail.confirmedAt;
         const isCounterProposal = agreement.redlines.some((candidate) => candidate.supersededBy === redline.id);
-        if (!isCounterProposal) {
+        if (!isCounterProposal && !unconfirmedEmailRevision) {
           events.push({
             at: redline.createdAt,
             party: redline.proposedBy,
@@ -48,9 +49,12 @@ export function buildNegotiationCertificate(agreement: Agreement): NegotiationCe
             action: "proposed",
             value: redline.proposedValue,
             rationale: redline.rationale || undefined,
+            provenance: redline.recordedFromEmail ? "email_confirmed" : "workspace",
+            recordedBy: redline.recordedFromEmail?.recordedBy,
+            recordedBySource: redline.recordedFromEmail?.recordedBySource,
           });
         }
-        if (redline.resolvedAt && redline.resolvedBy && redline.status === "superseded") {
+        if (redline.resolvedAt && redline.resolvedBy && redline.status === "superseded" && !unconfirmedEmailRevision) {
           const counter = agreement.redlines.find((candidate) => candidate.id === redline.supersededBy);
           events.push({
             at: redline.resolvedAt,
@@ -60,7 +64,7 @@ export function buildNegotiationCertificate(agreement: Agreement): NegotiationCe
             value: counter?.proposedValue,
             rationale: counter?.rationale || undefined,
           });
-        } else if (redline.resolvedAt && redline.resolvedBy) {
+        } else if (redline.resolvedAt && redline.resolvedBy && !unconfirmedEmailRevision) {
           events.push({
             at: redline.resolvedAt,
             party: redline.resolvedBy,
@@ -87,8 +91,8 @@ export function buildNegotiationCertificate(agreement: Agreement): NegotiationCe
   const partySummaries = (["author", "signer"] as PartyRole[]).map((role) => ({
     role,
     legalName: agreement[role].legalName,
-    agentProposals: agreement.redlines.filter((redline) => redline.proposedBy === role && redline.proposedBySource === "agent").length,
-    humanNegotiationActions: agreement.audit.filter((event) => event.actorRole === role && event.actorSource === "human" && ["redline.proposed", "redline.accepted", "redline.rejected", "redline.countered", "party.ready"].includes(event.type)).length,
+    agentProposals: agreement.redlines.filter((redline) => redline.proposedBy === role && redline.proposedBySource === "agent" && (!redline.recordedFromEmail || Boolean(redline.recordedFromEmail.confirmedAt))).length,
+    humanNegotiationActions: agreement.audit.filter((event) => event.actorRole === role && event.actorSource === "human" && ["redline.proposed", "redline.email_confirmed", "redline.email_corrected", "redline.accepted", "redline.rejected", "redline.countered", "party.ready"].includes(event.type)).length,
     readyAt: [...agreement.audit].reverse().find((event) => event.actorRole === role && event.type === "party.ready")?.createdAt,
     signedAt: agreement.signatures[role]?.signedAt,
   }));
