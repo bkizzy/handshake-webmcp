@@ -29,7 +29,9 @@
 .home-page .steps h3 { margin: 35px 0 10px; color: #1f2937; font-size: 18px; letter-spacing: -.02em; }
 .home-page .steps p { margin: 0; color: #5f6878; line-height: 1.65; }
 .home-page .home-faq { max-width: 900px; padding-top: 0; padding-bottom: 120px; text-align: center; }
-.home-page .home-faq-list { margin-top: 42px; display: grid; gap: 10px; text-align: left; }
+.home-page .home-faq-sections { margin-top: 48px; display: grid; gap: 42px; text-align: left; }
+.home-page .home-faq-sections h3 { margin: 0 0 15px; color: var(--ink); font-size: 24px; letter-spacing: -.025em; }
+.home-page .home-faq-list { display: grid; gap: 10px; }
 .home-page .home-faq-list details { border: 1px solid var(--line); border-radius: 11px; background: white; box-shadow: var(--shadow-sm); }
 .home-page .home-faq-list summary { padding: 19px 52px 19px 20px; position: relative; cursor: pointer; color: #263147; font-size: 17px; font-weight: 750; list-style: none; }
 .home-page .home-faq-list summary::-webkit-details-marker { display: none; }
@@ -70,6 +72,7 @@
   .home-page .trust-strip .app-shell { padding: 20px 0; flex-direction: column; align-items: flex-start; gap: 12px; }
   .home-page .how { padding-top: 80px; padding-bottom: 80px; }
   .home-page .home-faq { padding-bottom: 80px; }
+  .home-page .home-faq-sections { margin-top: 40px; gap: 34px; }
   .home-page .home-faq-actions { align-items: stretch; flex-direction: column; }
   .home-page .closing-inner { align-items: flex-start; flex-direction: column; }
 }
