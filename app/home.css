@@ -38,6 +38,7 @@
 .home-page .home-faq-list summary::after { content: "+"; position: absolute; right: 20px; color: var(--blue); font-size: 23px; font-weight: 500; line-height: 1; }
 .home-page .home-faq-list details[open] summary::after { content: "−"; }
 .home-page .home-faq-list details p { margin: 0; padding: 0 20px 20px; color: #5d687b; font-size: 16px; line-height: 1.65; }
+.home-page .home-faq-list details p a { color: var(--blue); font-weight: 700; }
 .home-page .home-faq-actions { margin-top: 26px; display: flex; align-items: center; justify-content: center; gap: 10px; }
 .home-page .closing { padding: 74px 0; background: #111827; color: white; }
 .home-page .closing-inner { display: flex; align-items: center; justify-content: space-between; gap: 32px; }
