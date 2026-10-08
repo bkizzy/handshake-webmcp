@@ -46,9 +46,12 @@ export async function processAgreementAction(
   request: Request,
   id: string,
   source: ActorSource,
-  options: { exposeInvitationUrl?: boolean } = {},
+  options: { exposeInvitationUrl?: boolean; body?: unknown; allowHumanSignature?: boolean } = {},
 ) {
-  const body = actionRequestSchema.parse(await request.json());
+  const body = actionRequestSchema.parse(options.body ?? await request.json());
+  if (body.action.type === "sign" && !options.allowHumanSignature) {
+    throw new AgreementError("Use the human signing form to apply a signature.", "human_signature_required", 403);
+  }
   const access = await resolveAgreementAccess(id);
   const { agreement: current, role } = access;
 

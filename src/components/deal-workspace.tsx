@@ -209,17 +209,29 @@ export function DealWorkspace({ id }: { id: string }) {
       setProfile(data.profile);
       setDraftFields((current) => current ?? data.agreement.fields);
       const url = new URL(window.location.href);
+      const signError = url.searchParams.get("signError");
+      const signed = url.searchParams.get("signed") === "1";
+      if (signError) setError(signError);
+      else setError("");
+      if (signed) {
+        triggerVisualEvent("signed", data.agreement.status === "signed" ? "Agreement fully executed" : "Signature recorded");
+        if (data.agreement.status === "signed") {
+          setExecutionCelebration(true);
+          celebrationTimer.current = window.setTimeout(() => { setExecutionCelebration(false); celebrationTimer.current = null; }, 5200);
+        }
+      }
+      url.searchParams.delete("signError");
+      url.searchParams.delete("signed");
       if (url.searchParams.get("as") !== data.agreement.viewerRole) {
         url.searchParams.set("as", data.agreement.viewerRole);
-        window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
       }
-      setError("");
+      window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
     } catch (caught) {
       if (!quiet) setError(caught instanceof Error ? caught.message : "Could not open this agreement.");
     } finally {
       if (!quiet) setLoading(false);
     }
-  }, [acceptAgreement, accessReady, authHeaders, id]);
+  }, [acceptAgreement, accessReady, authHeaders, id, triggerVisualEvent]);
 
   useEffect(() => {
     if (!accessReady) return;
@@ -543,7 +555,7 @@ export function DealWorkspace({ id }: { id: string }) {
 
               <div className="appendices">{visibleKnownInformationRoles(agreement).map((role, index) => { const field = knownInformationField(role); const canEditAppendix = agreement.permissions.canEditDraft && agreement.kind === "mutual" && role === "author"; return <section className="agreement-appendix" key={role}><p className="appendix-label">Appendix {String.fromCharCode(65 + index)}</p><h2>Previously Known Information of {participantValue(agreement[role].legalName, "Counterparty name")}</h2><p className="appendix-help">Information this party knew lawfully and without restriction before disclosure under this agreement.</p>{canEditAppendix && draftFields ? <label className="field-label">Appendix entries<textarea className="field-textarea" value={draftFields[field]} onChange={(event) => setDraftFields({ ...draftFields, [field]: event.target.value })} /></label> : <dl><TermDisplay agreement={agreement} target={{ kind: "field", id: field }} label="Disclosed information" value={agreement.fields[field] || "None disclosed."} openRedlines={openRedlines} freshRedlines={freshRedlines} visualTarget={visualEvent?.target} onSuggest={suggest} onSelectRedline={openRedline} canSuggest={agreement.permissions.canRedline && agreement.viewerRole === role} /></dl>}</section>; })}</div>
               <div className="signature-block">{(["author", "signer"] as PartyRole[]).map((role) => { const signature = agreement.signatures[role]; const party = agreement[role]; return <div key={role}><p>{roleLabel(role)}</p><div className={signature ? "signature-line signed" : "signature-line"}>{signature ? signature.typedName : participantValue(party.signatoryName, "Signatory name")}</div><b>{participantValue(party.signatoryName, "Signatory name")}</b><span>{participantValue(party.signatoryTitle, "Signatory title")}, {participantValue(party.legalName, "Legal name")}</span>{signature && <small>Signed {formatDate(signature.signedAt)} · Email verified · Version {signature.documentVersion}</small>}</div>; })}</div>
-              {agreement.permissions.canSign && <InlineSignaturePanel id={id} role={agreement.viewerRole} email={viewerParty.email} partyName={viewerParty.signatoryName} version={agreement.version} working={working} authHeaders={authHeaders} onSign={(typedName, code) => void performAction({ type: "sign", typedName, code, consentVersion: signatureConsentVersion })} />}
+              {agreement.permissions.canSign && <InlineSignaturePanel id={id} role={agreement.viewerRole} email={viewerParty.email} partyName={viewerParty.signatoryName} version={agreement.version} eventSequence={agreement.eventSequence} working={working} authHeaders={authHeaders} />}
               {agreement.status === "signed" && <div className="execution-seal"><ShieldCheck size={18} /><div><b>SHA-256 execution seal</b><code>{agreement.execution?.sealHash ?? agreement.execution?.sha256}</code></div><button onClick={() => void navigator.clipboard.writeText(agreement.execution?.sealHash ?? agreement.execution?.sha256 ?? "")}>Copy</button></div>}
             </article>
           )}
@@ -627,7 +639,7 @@ function EmailedRevisionDialog({ agreement, working, onClose, onSubmit }: { agre
   return <div className="dialog-backdrop" role="presentation"><div className="dialog" role="dialog" aria-modal="true" aria-labelledby="email-revision-title"><button className="dialog-close" onClick={onClose} aria-label="Close"><X size={18} /></button><p className="eyebrow">External revision</p><h2 id="email-revision-title">Record a counterparty revision</h2><p className="dialog-help">Enter one revision received from the counterparty by email. They will be asked to confirm, correct, or reject it before Mutual Assent AI attributes the proposal to them.</p><label className="field-label">Agreement term<select className="field-input" value={targetIndex} onChange={(event) => chooseTarget(Number(event.target.value))}>{targets.map((item, index) => <option key={targetKey(item.target)} value={index}>{item.label}</option>)}</select></label><label className="field-label">Revision received<textarea className="field-textarea proposal-text" value={value} onChange={(event) => setValue(event.target.value)} autoFocus /></label><label className="field-label">Email context <span>(optional)</span><input className="field-input" placeholder="Briefly identify the request" value={rationale} onChange={(event) => setRationale(event.target.value)} /></label><div className="dialog-actions"><button className="button-secondary" onClick={onClose}>Cancel</button><button className="button-primary" disabled={working || value === currentValue || !value.trim()} onClick={() => onSubmit(selected.target, value, rationale)}><Send size={15} /> Send for confirmation</button></div></div></div>;
 }
 
-function InlineSignaturePanel({ id, role, email, partyName, version, working, authHeaders, onSign }: { id: string; role: PartyRole; email: string; partyName: string; version: number; working: boolean; authHeaders: (headers?: HeadersInit) => Headers; onSign: (typedName: string, code: string) => void }) {
+function InlineSignaturePanel({ id, role, email, partyName, version, eventSequence, working, authHeaders }: { id: string; role: PartyRole; email: string; partyName: string; version: number; eventSequence: number; working: boolean; authHeaders: (headers?: HeadersInit) => Headers }) {
   const [name, setName] = useState(partyName);
   const [confirmed, setConfirmed] = useState(false);
   const [code, setCode] = useState("");
@@ -640,7 +652,7 @@ function InlineSignaturePanel({ id, role, email, partyName, version, working, au
     setCodeSent(true);
     setMessage(data.delivered ? `Code sent to ${email}` : "The code could not be delivered. Try again shortly.");
   }
-  return <section className="inline-signature" id={`signature-action-${role}`} aria-labelledby="sign-title"><div className="inline-signature-heading"><span className="sign-icon"><PenLine size={22} /></span><div><p>Signature required</p><h2 id="sign-title">Sign version {version}</h2></div></div><p className="inline-signature-help">Review the complete agreement above, then verify your email and sign below. {agreementCopy.signatureCodeHelp}</p><label className="field-label">Full legal name<input className="field-input signature-input" value={name} onChange={(event) => setName(event.target.value)} /></label>{!codeSent ? <button className="button-secondary code-button" onClick={() => void requestCode()}><Mail size={15} /> Email my signing code</button> : <label className="field-label">Six-digit code<input className="field-input code-input" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} /></label>}{message && <p className="form-message">{message}</p>}<label className="confirm-row"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} /><span>{agreementCopy.signingConsent}</span></label><button className="button-primary sign-submit" disabled={working || !confirmed || !name.trim() || code.length !== 6} onClick={() => onSign(name, code)}><PenLine size={15} /> Sign agreement</button></section>;
+  return <form className="inline-signature" id={`signature-action-${role}`} aria-labelledby="sign-title" action={`/api/agreements/${id}/sign`} method="post"><input type="hidden" name="expectedEventSequence" value={eventSequence} /><input type="hidden" name="consentVersion" value={signatureConsentVersion} /><div className="inline-signature-heading"><span className="sign-icon"><PenLine size={22} /></span><div><p>Signature required</p><h2 id="sign-title">Sign version {version}</h2></div></div><p className="inline-signature-help">Review the complete agreement above, then verify your email and sign below. {agreementCopy.signatureCodeHelp}</p><label className="field-label">Full legal name<input className="field-input signature-input" name="typedName" value={name} onChange={(event) => setName(event.target.value)} required /></label>{!codeSent ? <button type="button" className="button-secondary code-button" onClick={() => void requestCode()}><Mail size={15} /> Email my signing code</button> : <label className="field-label">Six-digit code<input className="field-input code-input" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} required /></label>}{message && <p className="form-message">{message}</p>}<label className="confirm-row"><input type="checkbox" name="consent" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} required /><span>{agreementCopy.signingConsent}</span></label><button type="submit" className="button-primary sign-submit" disabled={working || !confirmed || !name.trim() || code.length !== 6}><PenLine size={15} /> Sign agreement</button></form>;
 }
 
 function ParticipantDialog({ role, participant, working, onClose, onSubmit }: { role: PartyRole; participant: AgreementView[PartyRole]; working: boolean; onClose: () => void; onSubmit: (participant: Partial<AgreementView[PartyRole]>) => void }) {

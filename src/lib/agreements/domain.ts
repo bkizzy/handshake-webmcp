@@ -201,6 +201,17 @@ function setTargetValue(agreement: Agreement, target: RedlineTarget, value: stri
   section.body = value;
 }
 
+function assertRedlineTargetAllowed(agreement: Agreement, role: PartyRole, target: RedlineTarget) {
+  if (target.kind !== "field") return;
+  if (target.id === knownInformationField("author")) {
+    assert(agreement.kind === "mutual", "This appendix is available only in a mutual NDA.", "invalid_field");
+    assert(role === "author", "Only the author may identify the author’s previously known information.", "forbidden", 403);
+  }
+  if (target.id === knownInformationField("signer")) {
+    assert(role === "signer", "Only the signer may identify the signer’s previously known information.", "forbidden", 403);
+  }
+}
+
 function invalidateApproval(agreement: StoredAgreement) {
   agreement.readiness = { author: false, signer: false };
   agreement.signatures = {};
@@ -530,15 +541,7 @@ export function executeAgreementAction(
         "not_in_review",
         409,
       );
-      if (action.target.kind === "field") {
-        if (action.target.id === knownInformationField("author")) {
-          assert(agreement.kind === "mutual", "This appendix is available only in a mutual NDA.", "invalid_field");
-          assert(context.role === "author", "Only the author may identify the author’s previously known information.", "forbidden", 403);
-        }
-        if (action.target.id === knownInformationField("signer")) {
-          assert(context.role === "signer", "Only the signer may identify the signer’s previously known information.", "forbidden", 403);
-        }
-      }
+      assertRedlineTargetAllowed(agreement, context.role, action.target);
       const redline = createRedline(agreement, context, action.target, action.proposedValue, action.rationale);
       audit(agreement, context, "redline.proposed", `Proposed a change to ${redline.target.id}`, {
         redlineId: redline.id,
@@ -554,6 +557,7 @@ export function executeAgreementAction(
         "not_in_review",
         409,
       );
+      assertRedlineTargetAllowed(agreement, "signer", action.target);
       const redline = createRedline(
         agreement,
         { ...context, role: "signer" },

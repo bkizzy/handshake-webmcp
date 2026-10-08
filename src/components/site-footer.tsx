@@ -4,7 +4,7 @@ export function SiteFooter({ note = "Electronic signature for the agentic era." 
   return (
     <footer className="site-footer">
       <div className="app-shell footer-inner">
-        <div><span>© 2026 Mutual Assent AI</span></div>
+        <div><span>© 2026 AIFirst LLC</span></div>
         <nav aria-label="Legal and support">
           <Link href="/terms">Terms</Link>
           <Link href="/privacy">Privacy</Link>

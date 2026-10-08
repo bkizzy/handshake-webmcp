@@ -1,10 +1,10 @@
-export const legalEffectiveDate = "October 2, 2026";
+export const legalEffectiveDate = "October 7, 2026";
 
 export const termsSections = [
   {
     title: "1. Free beta; use at your own risk",
     paragraphs: [
-      "Mutual Assent AI is experimental beta software offered free of charge for evaluation. The service may contain errors, lose data, change without notice, or become unavailable. You use it entirely at your own risk.",
+      "Mutual Assent AI is operated by AIFirst LLC and is experimental beta software offered free of charge for evaluation. The service may contain errors, lose data, change without notice, or become unavailable. You use it entirely at your own risk.",
       "THE SERVICE IS PROVIDED “AS IS” AND “AS AVAILABLE,” WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT, ACCURACY, SECURITY, AVAILABILITY, DELIVERY, ENFORCEABILITY, OR FITNESS OF ANY AGREEMENT FOR YOUR NEEDS.",
     ],
   },
@@ -18,8 +18,8 @@ export const termsSections = [
   {
     title: "3. We are not a party to user agreements",
     paragraphs: [
-      "Mutual Assent AI and its owner or operator are not parties to, beneficiaries of, brokers for, or guarantors of any agreement created, negotiated, transmitted, or signed through the service. We do not verify a party’s identity, authority, capacity, representations, performance, or compliance unless the service expressly states otherwise.",
-      "Disputes about an agreement, disclosure, signature, negotiation, payment, performance, or relationship are solely between the parties to that agreement. You agree not to name or involve Mutual Assent AI or its owner or operator in such disputes except where applicable law does not permit this limitation.",
+      "Mutual Assent AI and AIFirst LLC are not parties to, beneficiaries of, brokers for, or guarantors of any agreement created, negotiated, transmitted, or signed through the service. We do not verify a party’s identity, authority, capacity, representations, performance, or compliance unless the service expressly states otherwise.",
+      "Disputes about an agreement, disclosure, signature, negotiation, payment, performance, or relationship are solely between the parties to that agreement. You agree not to name or involve Mutual Assent AI or AIFirst LLC in such disputes except where applicable law does not permit this limitation.",
     ],
   },
   {
@@ -59,24 +59,24 @@ export const termsSections = [
   {
     title: "9. Limitation of liability",
     paragraphs: [
-      "TO THE MAXIMUM EXTENT PERMITTED BY LAW, MUTUAL ASSENT AI AND ITS OWNER, OPERATOR, CONTRIBUTORS, SERVICE PROVIDERS, AND AFFILIATES WILL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES; LOST PROFITS, REVENUE, BUSINESS, OPPORTUNITY, GOODWILL, OR DATA; OR CLAIMS ARISING FROM AGREEMENTS OR DISPUTES BETWEEN USERS, EVEN IF ADVISED OF THE POSSIBILITY.",
+      "TO THE MAXIMUM EXTENT PERMITTED BY LAW, MUTUAL ASSENT AI, AIFIRST LLC, AND THEIR CONTRIBUTORS, SERVICE PROVIDERS, AND AFFILIATES WILL NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES; LOST PROFITS, REVENUE, BUSINESS, OPPORTUNITY, GOODWILL, OR DATA; OR CLAIMS ARISING FROM AGREEMENTS OR DISPUTES BETWEEN USERS, EVEN IF ADVISED OF THE POSSIBILITY.",
       "TO THE MAXIMUM EXTENT PERMITTED BY LAW, THEIR TOTAL AGGREGATE LIABILITY ARISING OUT OF OR RELATING TO THE SERVICE OR THESE TERMS WILL NOT EXCEED THE GREATER OF US$100 OR THE AMOUNT YOU PAID TO USE THE SERVICE DURING THE 12 MONTHS BEFORE THE EVENT GIVING RISE TO THE CLAIM. Some jurisdictions do not allow certain limitations, so portions of this section may not apply to you.",
     ],
   },
   {
     title: "10. Indemnity",
-    paragraphs: ["To the extent permitted by law, you will defend, indemnify, and hold harmless Mutual Assent AI and its owner, operator, contributors, service providers, and affiliates from third-party claims, damages, losses, liabilities, costs, and reasonable legal fees arising from your content, your agent’s actions, your agreement or dispute with another party, your violation of these Terms, or your infringement of another person’s rights."],
+    paragraphs: ["To the extent permitted by law, you will defend, indemnify, and hold harmless Mutual Assent AI, AIFirst LLC, and their contributors, service providers, and affiliates from third-party claims, damages, losses, liabilities, costs, and reasonable legal fees arising from your content, your agent’s actions, your agreement or dispute with another party, your violation of these Terms, or your infringement of another person’s rights."],
   },
   {
     title: "11. General",
-    paragraphs: ["These Terms and the Privacy Notice are the entire agreement between you and the service operator concerning the service. If a provision is unenforceable, it will be limited to the minimum extent necessary and the remainder will continue in effect. A failure to enforce a provision is not a waiver. You may not assign these Terms without consent; we may assign them in connection with a reorganization, financing, merger, acquisition, or sale. These Terms are governed by New York law, without regard to conflicts principles, and disputes concerning the service must be brought in state or federal courts located in New York, except where applicable consumer law requires otherwise."],
+    paragraphs: ["These Terms and the Privacy Notice are the entire agreement between you and AIFirst LLC concerning the service. If a provision is unenforceable, it will be limited to the minimum extent necessary and the remainder will continue in effect. A failure to enforce a provision is not a waiver. You may not assign these Terms without consent; we may assign them in connection with a reorganization, financing, merger, acquisition, or sale. These Terms are governed by New York law, without regard to conflicts principles, and disputes concerning the service must be brought in state or federal courts located in New York, except where applicable consumer law requires otherwise."],
   },
 ] as const;
 
 export const privacySections = [
   {
     title: "1. Scope",
-    paragraphs: ["This Privacy Notice explains how Mutual Assent AI handles personal information when you visit the site, create an account, prepare or negotiate an agreement, sign, contact us, or direct an AI agent to use the service. The service is a free beta and is not intended for children under 18."],
+    paragraphs: ["This Privacy Notice explains how AIFirst LLC, operator of Mutual Assent AI, handles personal information when you visit the site, create an account, prepare or negotiate an agreement, sign, contact us, or direct an AI agent to use the service. The service is a free beta and is not intended for children under 18."],
   },
   {
     title: "2. Information we collect",

@@ -3,16 +3,6 @@ import type { User } from "@supabase/supabase-js";
 import type { AgreementStatus, StoredAgreement } from "./agreements/types";
 import { createSupabaseAdminClient } from "./supabase/server";
 
-export function isAdminEmail(email?: string | null) {
-  if (!email) return false;
-  const configured = process.env.ADMIN_EMAILS || process.env.CONTACT_EMAIL || "";
-  return configured
-    .split(",")
-    .map((value) => value.trim().toLowerCase())
-    .filter(Boolean)
-    .includes(email.trim().toLowerCase());
-}
-
 export type AdminDashboardData = {
   accountCount: number;
   agreementCount: number;
@@ -33,11 +23,18 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   const supabase = createSupabaseAdminClient();
   if (!supabase) throw new Error("Admin reporting is not configured.");
 
-  const [usersResult, agreementsResult] = await Promise.all([
+  const [usersResult, agreementCountResult, executedCountResult, inProgressCountResult, invitedCountResult, agreementsResult] = await Promise.all([
     supabase.auth.admin.listUsers({ page: 1, perPage: 1000 }),
-    supabase.from("agreements").select("id, data, created_at, updated_at").order("created_at", { ascending: false }),
+    supabase.from("agreements").select("id", { count: "exact", head: true }),
+    supabase.from("agreements").select("id", { count: "exact", head: true }).eq("data->>status", "signed"),
+    supabase.from("agreements").select("id", { count: "exact", head: true }).not("data->>status", "in", "(signed,declined,voided)"),
+    supabase.from("agreements").select("id", { count: "exact", head: true }).not("data->>invitedAt", "is", null),
+    supabase.from("agreements").select("id, data, created_at, updated_at").order("created_at", { ascending: false }).limit(10),
   ]);
   if (usersResult.error) throw new Error("Account reporting could not be loaded.");
+  if (agreementCountResult.error || executedCountResult.error || inProgressCountResult.error || invitedCountResult.error) {
+    throw new Error("Agreement metrics could not be loaded.");
+  }
   if (agreementsResult.error) throw new Error("Agreement reporting could not be loaded.");
 
   const agreements = (agreementsResult.data ?? []).map((row) => {
@@ -51,14 +48,12 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       invited: Boolean(agreement.invitedAt),
     };
   });
-  const executedCount = agreements.filter((agreement) => agreement.status === "signed").length;
-
   return {
     accountCount: usersResult.data.total,
-    agreementCount: agreements.length,
-    executedCount,
-    inProgressCount: agreements.filter((agreement) => !["signed", "declined", "voided"].includes(agreement.status)).length,
-    invitedCount: agreements.filter((agreement) => agreement.invited).length,
+    agreementCount: agreementCountResult.count ?? 0,
+    executedCount: executedCountResult.count ?? 0,
+    inProgressCount: inProgressCountResult.count ?? 0,
+    invitedCount: invitedCountResult.count ?? 0,
     recentAccounts: [...usersResult.data.users]
       .sort((left, right) => right.created_at.localeCompare(left.created_at))
       .slice(0, 10)

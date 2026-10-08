@@ -2,7 +2,8 @@ import { BarChart3, ExternalLink, FileCheck2, FileClock, FilePlus2, Send, Users 
 import { notFound, redirect } from "next/navigation";
 
 import { SiteHeader } from "@/src/components/site-header";
-import { getAdminDashboardData, isAdminEmail } from "@/src/lib/admin";
+import { isAdminEmail } from "@/src/lib/admin-auth";
+import { getAdminDashboardData } from "@/src/lib/admin";
 import { getAuthenticatedUser } from "@/src/lib/supabase/server";
 
 export const dynamic = "force-dynamic";

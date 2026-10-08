@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { isAdminEmail } from "@/src/lib/admin";
+import { isAdminEmail } from "@/src/lib/admin-auth";
 import { getAuthenticatedUser } from "@/src/lib/supabase/server";
 
 export async function GET() {

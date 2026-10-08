@@ -170,6 +170,17 @@ describe("agreement lifecycle", () => {
     expect(updated.redlines.at(-1)).toMatchObject({ proposedBy: "signer", proposedBySource: "agent" });
   });
 
+  it("prevents an author from recording a counterparty revision against the author-only appendix", () => {
+    const agreement = invitedAgreement();
+    const error = captureError(() => executeAgreementAction(agreement, authorHuman, {
+      type: "record_counterparty_redline",
+      target: { kind: "field", id: "authorPreviouslyKnownInformation" },
+      proposedValue: "Purported signer edit to the author's appendix",
+      rationale: "Received by email.",
+    }));
+    expect(error.code).toBe("forbidden");
+  });
+
   it("uses genuinely different one-way and mutual terms and appendices", () => {
     const mutual = createAgreement(input);
     const oneWay = createAgreement({ ...input, kind: "one-way" });
