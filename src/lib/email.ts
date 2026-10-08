@@ -8,9 +8,10 @@ import {
   recoveryEmailCopy,
   signatureCodeEmailCopy,
   signatureReadyEmailCopy,
+  surveyEmailCopy,
   type AgreementEmailContent,
-} from "@/src/content/agreement-copy";
-import type { PartyRole, StoredAgreement } from "@/src/lib/agreements/types";
+} from "../content/agreement-copy";
+import type { PartyRole, StoredAgreement } from "./agreements/types";
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>'"]/g, (character) => ({
@@ -22,7 +23,7 @@ function escapeHtml(value: string) {
   })[character] ?? character);
 }
 
-function renderEmail(content: AgreementEmailContent, url?: string) {
+function renderEmail(content: AgreementEmailContent, url?: string, includeAgentHandoff = true) {
   const isCode = /^\d{6,8}$/.test(content.body);
   const body = isCode
     ? `<div style="margin:26px 0;padding:18px;color:#172033;background:#f5f7fa;border-radius:10px;font-size:32px;font-weight:700;letter-spacing:.22em;text-align:center">${escapeHtml(content.body)}</div>`
@@ -30,7 +31,7 @@ function renderEmail(content: AgreementEmailContent, url?: string) {
   const button = url && content.actionLabel
     ? `<a href="${escapeHtml(url)}" style="margin-top:27px;padding:13px 18px;display:inline-block;color:white;background:#2457d6;border-radius:8px;text-decoration:none;font-weight:700">${escapeHtml(content.actionLabel)}</a>`
     : "";
-  const agentHandoff = url
+  const agentHandoff = url && includeAgentHandoff
     ? `<div style="margin-top:28px;padding:20px;background:#f5f7fa;border:1px solid #dfe4ec;border-radius:10px"><div style="color:#172033;font-size:14px;font-weight:700">Want your agent to handle this?</div><p style="margin:7px 0 14px;color:#687287;font-size:13px;line-height:1.55">Provide this secure link to your agent and ask it to use Mutual Assent AI site tools. Your agent can review the agreement and perform available non-signing actions; signing is reserved for you.</p><a href="${escapeHtml(agentHandoffUrl(url))}" style="padding:10px 13px;display:inline-block;color:#2457d6;background:white;border:1px solid #b9c9eb;border-radius:7px;text-decoration:none;font-size:13px;font-weight:700">Copy link for your agent</a></div>`
     : "";
   return `<div style="margin:0;padding:40px 20px;background:#f5f7fa;font-family:Arial,sans-serif;color:#172033"><div style="max-width:560px;margin:0 auto;padding:36px;background:white;border:1px solid #dfe4ec;border-radius:12px"><div style="font-size:18px;font-weight:700;color:#172033">Mutual Assent AI</div><p style="margin:32px 0 0;font-size:13px;color:#2457d6;font-weight:700;text-transform:uppercase;letter-spacing:.08em">${escapeHtml(content.eyebrow)}</p><h1 style="margin:10px 0 0;font-size:27px;line-height:1.2">${escapeHtml(content.heading)}</h1>${body}${button}${agentHandoff}<p style="margin:30px 0 0;color:#8a93a2;font-size:11px;line-height:1.5">${escapeHtml(content.footer)}</p></div></div>`;
@@ -42,8 +43,8 @@ function agentHandoffUrl(url: string) {
   return handoff.toString();
 }
 
-function renderText(content: AgreementEmailContent, url?: string) {
-  return [content.heading, "", content.body, url && content.actionLabel ? `\n${content.actionLabel}: ${url}` : "", url ? `\nUsing an agent? Provide this secure link to your agent and ask it to use Mutual Assent AI site tools:\n${url}\n\nYour agent can review the agreement and perform available non-signing actions. Signing is reserved for you.` : "", "", content.footer]
+function renderText(content: AgreementEmailContent, url?: string, includeAgentHandoff = true) {
+  return [content.heading, "", content.body, url && content.actionLabel ? `\n${content.actionLabel}: ${url}` : "", url && includeAgentHandoff ? `\nUsing an agent? Provide this secure link to your agent and ask it to use Mutual Assent AI site tools:\n${url}\n\nYour agent can review the agreement and perform available non-signing actions. Signing is reserved for you.` : "", "", content.footer]
     .filter((line) => line !== undefined)
     .join("\n");
 }
@@ -52,7 +53,13 @@ function senderName(value = "Mutual Assent AI") {
   return value.replace(/[\r\n<>\"]/g, " ").replace(/\s+/g, " ").trim().slice(0, 120) || "Mutual Assent AI";
 }
 
-async function sendEmail(to: string, content: AgreementEmailContent, url?: string, replyTo?: string, fromName?: string) {
+type SendEmailOptions = {
+  scheduledAt?: string;
+  idempotencyKey?: string;
+  includeAgentHandoff?: boolean;
+};
+
+async function sendEmail(to: string, content: AgreementEmailContent, url?: string, replyTo?: string, fromName?: string, options: SendEmailOptions = {}) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   if (!apiKey || !from) return false;
@@ -60,14 +67,19 @@ async function sendEmail(to: string, content: AgreementEmailContent, url?: strin
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+        ...(options.idempotencyKey ? { "idempotency-key": options.idempotencyKey } : {}),
+      },
       body: JSON.stringify({
         from: `${senderName(fromName)} <${senderAddress.trim()}>`,
         to: [to],
         ...(replyTo ? { reply_to: replyTo } : {}),
         subject: content.subject,
-        html: renderEmail(content, url),
-        text: renderText(content, url),
+        html: renderEmail(content, url, options.includeAgentHandoff ?? true),
+        text: renderText(content, url, options.includeAgentHandoff ?? true),
+        ...(options.scheduledAt ? { scheduled_at: options.scheduledAt } : {}),
       }),
     });
     if (!response.ok) console.error("Agreement email failed", response.status);
@@ -76,6 +88,24 @@ async function sendEmail(to: string, content: AgreementEmailContent, url?: strin
     console.error("Agreement email failed", error instanceof Error ? error.name : "unknown_error");
     return false;
   }
+}
+
+export function scheduleAgreementSurvey(agreement: StoredAgreement) {
+  const surveyUrl = process.env.SURVEY_URL;
+  if (!surveyUrl) return Promise.resolve(false);
+  const scheduledAt = new Date(Date.parse(agreement.createdAt) + 24 * 60 * 60 * 1000).toISOString();
+  return sendEmail(
+    agreement.author.email,
+    surveyEmailCopy({ title: agreement.title }),
+    surveyUrl,
+    process.env.CONTACT_EMAIL,
+    "Mutual Assent AI",
+    {
+      scheduledAt,
+      idempotencyKey: `agreement-survey-${agreement.id}`,
+      includeAgentHandoff: false,
+    },
+  );
 }
 
 export function sendReviewInvitation(agreement: StoredAgreement, url: string) {

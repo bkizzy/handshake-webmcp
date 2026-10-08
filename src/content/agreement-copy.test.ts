@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { counterpartyConfirmationEmailCopy, invitationEmailCopy } from "./agreement-copy";
+import { counterpartyConfirmationEmailCopy, invitationEmailCopy, surveyEmailCopy } from "./agreement-copy";
 
 describe("invitationEmailCopy", () => {
   it("directs offline agent-review results back to the author", () => {
@@ -14,6 +14,15 @@ describe("invitationEmailCopy", () => {
     expect(content.body).toContain("either the revised document or a list of proposed revisions");
     expect(content.body).toContain("reply to this email");
     expect(content.body).toContain("Your reply will go directly to Acme Corp at contracts@acme.test");
+  });
+});
+
+describe("surveyEmailCopy", () => {
+  it("asks for product feedback without implying that the survey identifies the respondent", () => {
+    const content = surveyEmailCopy({ title: "Mutual NDA" });
+    expect(content.body).toContain("which agreement type we should build next");
+    expect(content.footer).toContain("does not collect your email address");
+    expect(content.footer).toContain("one-time feedback request");
   });
 });
 

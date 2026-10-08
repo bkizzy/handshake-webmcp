@@ -6,6 +6,7 @@ import { createAgreementSchema } from "@/src/lib/agreements/schemas";
 import { apiError } from "@/src/lib/http";
 import { hasSupabasePublicConfig } from "@/src/lib/supabase/config";
 import { getAuthenticatedUser } from "@/src/lib/supabase/server";
+import { scheduleAgreementSurvey } from "@/src/lib/email";
 
 export async function POST(request: Request) {
   try {
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
       );
     }
     const { agreement, authorToken } = await createStoredAgreement(input, user?.id);
+    await scheduleAgreementSurvey(agreement);
     const origin = (process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin).replace(/\/$/, "");
     const authorUrl = `${origin}/deal/${agreement.id}#access=${encodeURIComponent(authorToken)}`;
     return NextResponse.json(

@@ -67,6 +67,17 @@ export function counterpartyConfirmationEmailCopy(input: { title: string; author
   };
 }
 
+export function surveyEmailCopy(input: { title: string }): AgreementEmailContent {
+  return {
+    subject: "How was your Mutual Assent AI experience?",
+    eyebrow: "Two-minute beta survey",
+    heading: "Help us improve Mutual Assent AI.",
+    body: `You started ${input.title} yesterday. Tell us what worked, what was confusing, and which agreement type we should build next.`,
+    actionLabel: "Share feedback",
+    footer: "This is a one-time feedback request for this agreement. The survey does not collect your email address. You can ignore this message if you prefer not to participate.",
+  };
+}
+
 export function approvalResetEmailCopy(input: { title: string }): AgreementEmailContent {
   return {
     subject: `Changes require renewed approval for ${input.title}`,

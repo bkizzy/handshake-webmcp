@@ -94,6 +94,7 @@ export const privacySections = [
       "Provide accounts, agreement creation, review, redlining, approvals, signatures, access links, downloads, and notifications.",
       "Authenticate users and signatories; attribute actions; maintain versions, audit records, and execution evidence.",
       "Respond to contact requests and provide service communications.",
+      "Send the author one optional feedback survey 24 hours after an agreement is created.",
       "Prevent abuse, investigate errors, secure the service, and comply with legal obligations.",
       "Understand aggregate service usage and improve the beta. We do not sell personal information or use agreement content for behavioral advertising.",
     ],

@@ -5,6 +5,7 @@ import { createAgreementSchema } from "@/src/lib/agreements/schemas";
 import { toAgreementView } from "@/src/lib/agreements/domain";
 import { apiError } from "@/src/lib/http";
 import { getAuthenticatedUser } from "@/src/lib/supabase/server";
+import { scheduleAgreementSurvey } from "@/src/lib/email";
 
 export async function POST(request: Request) {
   try {
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
       author: { ...rawAuthor, email: user.email },
     });
     const { agreement, authorToken } = await createStoredAgreement(input, user?.id, "agent");
+    await scheduleAgreementSurvey(agreement);
     const origin = (process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin).replace(/\/$/, "");
     return NextResponse.json({ agreement: toAgreementView(agreement, "author"), links: { author: `${origin}/deal/${agreement.id}#access=${encodeURIComponent(authorToken)}` } }, { status: 201 });
   } catch (error) {

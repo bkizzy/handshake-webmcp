@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import "./globals.css";
 import { AuthTools } from "@/src/components/auth-tools";
 import { GlobalShortcut } from "@/src/components/global-shortcut";
+import { SiteAnalytics } from "@/src/components/site-analytics";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://mutualassent.com"),
@@ -22,7 +23,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   await connection();
   return (
     <html lang="en" data-scroll-behavior="smooth">
-      <body><AuthTools /><GlobalShortcut />{children}</body>
+      <body><AuthTools /><GlobalShortcut />{children}<SiteAnalytics /></body>
     </html>
   );
 }

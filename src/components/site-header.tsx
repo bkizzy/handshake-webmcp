@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard, FileText, LogOut } from "lucide-react";
+import { BarChart3, CreditCard, FileText, LogOut } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -9,12 +9,16 @@ import { Brand } from "./brand";
 
 export function SiteHeader({ showStartAgreement = true }: { showStartAgreement?: boolean }) {
   const [email, setEmail] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
     const refreshAccount = () => void fetch("/api/auth/me", { signal: controller.signal, cache: "no-store" })
         .then((response) => response.json())
-        .then((data) => setEmail(typeof data.email === "string" ? data.email : ""))
+        .then((data) => {
+          setEmail(typeof data.email === "string" ? data.email : "");
+          setIsAdmin(data.isAdmin === true);
+        })
         .catch(() => undefined);
     refreshAccount();
     window.addEventListener(authChangedEvent, refreshAccount);
@@ -27,9 +31,11 @@ export function SiteHeader({ showStartAgreement = true }: { showStartAgreement?:
         <div className="brand-group"><Brand /><span className="beta-badge">Free Beta</span></div>
         <nav aria-label="Primary navigation">
           {!email && <Link href="/#how-it-works">How it works</Link>}
+          {!email && <Link href="/faq">FAQ</Link>}
+          {!email && <Link href="/contact">Contact</Link>}
           {!email && <Link href="/login">Sign in</Link>}
           {showStartAgreement && <Link href="/new" className="button-primary" aria-label="Start an agreement with Mutual Assent AI" data-primary-action="start-agreement">Start an agreement</Link>}
-          {email && <details className="user-menu"><summary aria-label="Open user menu"><span>{email.slice(0, 1).toUpperCase()}</span><div><b>Account</b><small>{email}</small></div></summary><div className="menu-popover"><Link href="/dashboard"><FileText size={15} /> My agreements</Link><Link href="/billing"><CreditCard size={15} /> Billing</Link><form action="/api/auth/logout" method="post"><button><LogOut size={15} /> Log out</button></form></div></details>}
+          {email && <details className="user-menu"><summary aria-label="Open user menu"><span>{email.slice(0, 1).toUpperCase()}</span><div><b>Account</b><small>{email}</small></div></summary><div className="menu-popover"><Link href="/dashboard"><FileText size={15} /> My agreements</Link>{isAdmin && <Link href="/admin"><BarChart3 size={15} /> Admin dashboard</Link>}<Link href="/billing"><CreditCard size={15} /> Billing</Link><form action="/api/auth/logout" method="post"><button><LogOut size={15} /> Log out</button></form></div></details>}
         </nav>
       </div>
       <style jsx>{`
