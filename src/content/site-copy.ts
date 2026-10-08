@@ -19,5 +19,5 @@ export const homeCopy = {
   closingHeadline: "Put your next agreement in motion.",
   closingAction: "Start an agreement",
   footer: "Electronic signature for the agentic era.",
-  agentPrompt: "Use Mutual Assent AI at {url} to send my next NDA. Create a mutual NDA for [your company] and [counterparty]. Use the information you already know, ask me only for anything material you cannot infer, invite the other party to review, monitor the agreement page for changes, and let me know when the other party has signed off.",
+  agentPrompt: "Use Mutual Assent AI at {url} to send a [mutual] NDA to [email]. Use the information you already know, ask me only for anything material you cannot infer, invite the other party to review, monitor the agreement page for changes, and let me know when the other party has signed off.",
 };
