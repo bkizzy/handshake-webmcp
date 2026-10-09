@@ -92,7 +92,7 @@ export function CreateAgreementTool() {
           const data = await response.json();
           if (!response.ok) throw new Error(data.error?.message ?? "Could not create the NDA.");
           return {
-            content: [{ type: "text", text: `Created ${data.agreement.title} as version 1 and saved it to the authenticated author's account. Give the private author link to the owner so they can open and manage the draft.` }],
+            content: [{ type: "text", text: `Created ${data.agreement.title} as version 1 and saved it to the authenticated author's account. Give the private author link to the owner. Before inviting, read the draft, explain its main terms, apply the owner's known NDA preferences with the direct draft-edit tools, summarize the differences, and obtain confirmation of the prepared terms and recipient. These preparation edits are not counterparty redline proposals. Automatic personal templates are not implemented; do not claim a personal default was loaded or saved.` }],
             structuredContent: {
               agreementId: data.agreement.id,
               status: data.agreement.status,

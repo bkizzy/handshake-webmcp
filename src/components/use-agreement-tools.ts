@@ -38,6 +38,11 @@ function agentWorkflowState(agreement: AgreementView) {
   const signatureRequired = agreement.status === "ready" && !agreement.signatures[agreement.viewerRole];
   return {
     status: agreement.status,
+    preparation: agreement.permissions.canEditDraft ? {
+      instructions: "Read the draft, explain the main terms to your owner, apply their known preferences using the direct draft-edit tools, and summarize the differences. Obtain the owner's confirmation of the prepared terms and recipient before inviting the counterparty. Keep that discussion in your conversation with the owner. Preparation edits are not counterparty redline proposals. After invitation, use the negotiation tools.",
+      personalTemplateAvailable: false,
+      templateNotice: "Automatic personal templates are not implemented. Do not claim this draft was loaded from or saved as a personal default. If you know the owner's usual NDA, apply its differences to this draft and confirm them with the owner.",
+    } : undefined,
     nextAction: signatureRequired ? "human_signature_required" : agreement.status === "signed" ? "complete" : "continue_agreement_workflow",
     agentMaySign: false,
     messageForOwner: signatureRequired ? "The agreement is ready for your review and signature." : undefined,
@@ -215,7 +220,7 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
         },
         {
           name: "handshake_update_draft_section",
-          description: "Replace one complete section in the author's draft. Read the agreement first for valid IDs.",
+          description: "Edit the author's draft directly before invitation; this is preparation, not a proposed redline to the counterparty. Read the agreement first for valid section IDs. Apply the owner's known preferences, explain material differences, and obtain confirmation of the prepared terms and recipient before inviting. Replace one complete section at a time.",
           inputSchema: objectSchema({ requestId: requestIdSchema, sectionId: stringSchema("Section ID."), body: stringSchema("Complete replacement text.") }, ["requestId", "sectionId", "body"]),
           annotations: { ...commonAnnotations, idempotentHint: true },
           execute: async (input) => {
@@ -253,7 +258,7 @@ export function useAgreementTools({ id, agreement, performAction, authHeaders, o
     if (agreement.permissions.canInvite) {
       tools.push({
         name: "handshake_invite_signer",
-        description: `Send ${agreement.signer.email} a secure review invitation. This starts bilateral review; future changes use redlines.`,
+        description: `Send ${agreement.signer.email} a secure review invitation only after the owner has confirmed the prepared terms and recipient. A generic request to send an NDA is not confirmation of terms the owner has not reviewed. First report the main terms and differences from their usual NDA in your conversation with the owner. This starts bilateral review from the prepared document; future changes use redlines.`,
         inputSchema: objectSchema({ requestId: requestIdSchema }, ["requestId"]),
         annotations: { ...commonAnnotations, openWorldHint: true, idempotentHint: true },
         execute: async (input) => {
